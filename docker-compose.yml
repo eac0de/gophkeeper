@@ -1,0 +1,30 @@
+version: "3.12"
+services:
+  auth:
+    build:
+      context: auth
+      dockerfile: Dockerfile
+    command: ./auth
+    env_file:
+      - auth.env
+    depends_on:
+      - "auth_db"
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    restart: always
+
+  auth_db:
+    image: postgres:17-alpine
+    restart: always
+    env_file:
+      - auth.env
+    ports:
+      - "5555:5432"
+    expose:
+      - "5432"
+    volumes:
+      - ./data/auth_db:/var/lib/postgresql/data
+
+volumes:
+  auth_db:
