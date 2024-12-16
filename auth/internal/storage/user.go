@@ -1,4 +1,4 @@
-package psql
+package storage
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (storage *PSQLStorage) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (storage *AuthStorage) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := "SELECT id, email, created_at, is_super FROM users WHERE email=$1"
 	row := storage.QueryRow(ctx, query, email)
 	user := models.User{}
@@ -31,7 +31,7 @@ func (storage *PSQLStorage) GetUserByEmail(ctx context.Context, email string) (*
 	return &user, nil
 }
 
-func (storage *PSQLStorage) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+func (storage *AuthStorage) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	query := "SELECT id, email, created_at, is_super FROM users WHERE id=$1"
 	row := storage.QueryRow(ctx, query, userID)
 	user := models.User{}
@@ -50,7 +50,7 @@ func (storage *PSQLStorage) GetUserByID(ctx context.Context, userID uuid.UUID) (
 	return &user, nil
 }
 
-func (storage *PSQLStorage) InsertUser(ctx context.Context, user *models.User) error {
+func (storage *AuthStorage) InsertUser(ctx context.Context, user *models.User) error {
 	query := "INSERT INTO users (id, email, created_at, is_super) VALUES($1,$2,$3,$4)"
 	_, err := storage.Exec(
 		ctx,
@@ -66,7 +66,7 @@ func (storage *PSQLStorage) InsertUser(ctx context.Context, user *models.User) e
 	return nil
 }
 
-func (storage *PSQLStorage) UpdateUserEmail(ctx context.Context, userID uuid.UUID, email string) error {
+func (storage *AuthStorage) UpdateUserEmail(ctx context.Context, userID uuid.UUID, email string) error {
 	query := "UPDATE users SET email=$2 WHERE id=$1"
 	_, err := storage.Exec(
 		ctx,

@@ -11,7 +11,7 @@ import (
 	"github.com/eac0de/gophkeeper/auth/internal/config"
 	"github.com/eac0de/gophkeeper/auth/internal/grpcserver"
 	"github.com/eac0de/gophkeeper/auth/internal/services"
-	"github.com/eac0de/gophkeeper/auth/internal/storage/psql"
+	"github.com/eac0de/gophkeeper/auth/internal/storage"
 	"github.com/eac0de/gophkeeper/shared/pkg/emailsender"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +50,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	psqlStorage, err := psql.New(
+	authStorage, err := storage.NewAuthStorage(
 		ctx,
 		cfg.PSQLHost,
 		cfg.PSQLPort,
@@ -61,11 +61,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = psqlStorage.Migrate(ctx, "./migrations", false)
+	err = authStorage.Migrate(ctx, "./migrations", false)
 	if err != nil {
 		panic(err)
 	}
-	defer psqlStorage.Close()
+	defer authStorage.Close()
 
 	var emailSender emailsender.IEmailSender
 	if cfg.IsDev {
@@ -74,8 +74,8 @@ func main() {
 		emailSender = emailsender.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword)
 	}
 
-	sessionService := services.NewSessionService(cfg.JWTSecretKey, cfg.JWTAccessExp, cfg.JWTRefreshExp, psqlStorage)
-	authService := services.NewAuthService(psqlStorage, emailSender)
+	sessionService := services.NewSessionService(cfg.JWTSecretKey, cfg.JWTAccessExp, cfg.JWTRefreshExp, authStorage)
+	authService := services.NewAuthService(authStorage, emailSender)
 
 	gprcAuthServer := grpcserver.NewAuthGRPCServer(cfg.GPRCServerAddress, sessionService)
 	go gprcAuthServer.Run()

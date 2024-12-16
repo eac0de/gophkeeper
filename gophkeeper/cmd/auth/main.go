@@ -6,37 +6,46 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/eac0de/gophkeeper/auth/internal/api/handlers"
-	"github.com/eac0de/gophkeeper/auth/internal/api/inmiddlewares"
-	"github.com/eac0de/gophkeeper/auth/internal/config"
-	"github.com/eac0de/gophkeeper/auth/internal/grpcserver"
-	"github.com/eac0de/gophkeeper/auth/internal/services"
-	"github.com/eac0de/gophkeeper/auth/internal/storage/psql"
-	"github.com/eac0de/gophkeeper/shared/pkg/emailsender"
+	"github.com/eac0de/gophkeeper/auth/pkg/outmiddlewares"
+	"github.com/eac0de/gophkeeper/internal/api/handlers"
+	"github.com/eac0de/gophkeeper/internal/config"
+	"github.com/eac0de/gophkeeper/internal/services"
+	"github.com/eac0de/gophkeeper/internal/storage"
+	"google.golang.org/grpc"
 
 	"github.com/gin-gonic/gin"
 )
 
 func setupRouter(
-	sessionService *services.SessionService,
-	authService *services.AuthService,
+	authServiceConn *grpc.ClientConn,
+	userDataService *services.UserDataService,
 ) *gin.Engine {
 	router := gin.Default()
-	rootGroup := router.Group("api/auth")
+	rootGroup := router.Group("api/gophkeeper/")
+	authenticatedGroup := rootGroup.Group("/", outmiddlewares.NewAuthMiddleware(authServiceConn))
 
-	authHandlers := handlers.NewAuthHandlers(
-		authService,
-		sessionService,
-	)
+	userDataHandlers := handlers.NewUserDataHandlers(userDataService)
 
-	rootGroup.POST("code/generate/", authHandlers.GenerateEmailCodeHandler)
-	rootGroup.POST("code/check/", authHandlers.NewCheckEmailCodeHandler("/api/auth/token/"))
-	rootGroup.POST("token/", authHandlers.NewRefreshTokenHandler("/api/auth/token/"))
-	rootGroup.DELETE("token/", authHandlers.NewDeleteCurrentSession("/api/auth/token/"))
+	authenticatedGroup.GET("/user_auth_info/:id/", userDataHandlers.GetUserAuthInfo)
+	authenticatedGroup.DELETE("/user_auth_info/:id/", userDataHandlers.DeleteUserAuthInfo)
+	authenticatedGroup.PUT("/user_auth_info/:id/", userDataHandlers.UpdateUserAuthInfo)
+	authenticatedGroup.POST("/user_auth_info/", userDataHandlers.InsertUserAuthInfo)
 
-	authenticatedGroup := rootGroup.Group("/", inmiddlewares.NewAuthMiddleware(sessionService))
-	authenticatedGroup.GET("/sessions/", authHandlers.GetUserSessionsHandler)
-	authenticatedGroup.DELETE("/sessions/:id/", authHandlers.DeleteSession)
+	authenticatedGroup.GET("/text_data/:id/", userDataHandlers.GetUserTextData)
+	authenticatedGroup.DELETE("/text_data/:id/", userDataHandlers.DeleteUserTextData)
+	authenticatedGroup.PUT("/text_data/:id/", userDataHandlers.UpdateUserTextData)
+	authenticatedGroup.POST("/text_data/", userDataHandlers.InsertUserTextData)
+
+	authenticatedGroup.GET("/file_data/:id/", userDataHandlers.GetUserFileData)
+	authenticatedGroup.DELETE("/file_data/:id/", userDataHandlers.DeleteUserFileData)
+	authenticatedGroup.PUT("/file_data/:id/", userDataHandlers.UpdateUserFileData)
+	authenticatedGroup.POST("/file_data/", userDataHandlers.InsertUserFileData)
+
+	authenticatedGroup.GET("bank_card/:id/", userDataHandlers.GetUserBankCard)
+	authenticatedGroup.DELETE("bank_card/:id/", userDataHandlers.DeleteUserBankCard)
+	authenticatedGroup.PUT("bank_card/:id/", userDataHandlers.UpdateUserBankCard)
+	authenticatedGroup.POST("bank_card/", userDataHandlers.InsertUserBankCard)
+
 	return router
 }
 
@@ -50,7 +59,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	psqlStorage, err := psql.New(
+	gophKeeperStorage, err := storage.NewGophKeeperStorage(
 		ctx,
 		cfg.PSQLHost,
 		cfg.PSQLPort,
@@ -61,26 +70,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = psqlStorage.Migrate(ctx, "./migrations", false)
+	err = gophKeeperStorage.Migrate(ctx, "./migrations", false)
 	if err != nil {
 		panic(err)
 	}
-	defer psqlStorage.Close()
+	defer gophKeeperStorage.Close()
 
-	var emailSender emailsender.IEmailSender
-	if cfg.IsDev {
-		emailSender = emailsender.NewMock()
-	} else {
-		emailSender = emailsender.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword)
+	userDataService := services.NewUserDataService(gophKeeperStorage)
+	authServiceConn, err := grpc.NewClient(cfg.AuthServerAddress)
+	if err != nil {
+		panic(err)
 	}
-
-	sessionService := services.NewSessionService(cfg.JWTSecretKey, cfg.JWTAccessExp, cfg.JWTRefreshExp, psqlStorage)
-	authService := services.NewAuthService(psqlStorage, emailSender)
-
-	gprcAuthServer := grpcserver.NewAuthGRPCServer(cfg.GPRCServerAddress, sessionService)
-	go gprcAuthServer.Run()
-
-	r := setupRouter(sessionService, authService)
+	r := setupRouter(authServiceConn, userDataService)
 	go r.Run(cfg.ServerAddress)
 
 	sigChan := make(chan os.Signal, 1)

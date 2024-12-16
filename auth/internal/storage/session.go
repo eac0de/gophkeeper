@@ -1,4 +1,4 @@
-package psql
+package storage
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (storage *PSQLStorage) GetSessionsList(ctx context.Context, userID uuid.UUID) ([]*models.Session, error) {
+func (storage *AuthStorage) GetSessionsList(ctx context.Context, userID uuid.UUID) ([]*models.Session, error) {
 	query := "SELECT id, token, user_id, ip, location, client_info, last_login FROM sessions WHERE user_id=$1"
 	rows, err := storage.Query(ctx, query, userID)
 	if err != nil {
@@ -34,7 +34,7 @@ func (storage *PSQLStorage) GetSessionsList(ctx context.Context, userID uuid.UUI
 	return sessionsList, nil
 }
 
-func (storage *PSQLStorage) GetSession(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
+func (storage *AuthStorage) GetSession(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
 	query := "SELECT token, user_id, ip, location, client_info, last_login FROM sessions WHERE id=$1"
 	row := storage.QueryRow(ctx, query, sessionID)
 	session := models.Session{ID: sessionID}
@@ -48,7 +48,7 @@ func (storage *PSQLStorage) GetSession(ctx context.Context, sessionID uuid.UUID)
 	return &session, nil
 }
 
-func (storage *PSQLStorage) InsertSession(ctx context.Context, session models.Session) error {
+func (storage *AuthStorage) InsertSession(ctx context.Context, session models.Session) error {
 	query := "INSERT INTO sessions (id, token, user_id, ip, location, client_info, last_login) VALUES ($1, $2, $3, $4, $5, $6, $7)"
 	_, err := storage.Exec(
 		ctx,
@@ -67,7 +67,7 @@ func (storage *PSQLStorage) InsertSession(ctx context.Context, session models.Se
 	return nil
 }
 
-func (storage *PSQLStorage) UpdateSession(ctx context.Context, session models.Session) error {
+func (storage *AuthStorage) UpdateSession(ctx context.Context, session models.Session) error {
 	if session.ID == uuid.Nil {
 		return fmt.Errorf("session id is required for the update")
 	}
@@ -89,7 +89,7 @@ func (storage *PSQLStorage) UpdateSession(ctx context.Context, session models.Se
 	return nil
 }
 
-func (storage *PSQLStorage) DeleteSession(ctx context.Context, sessionID uuid.UUID) error {
+func (storage *AuthStorage) DeleteSession(ctx context.Context, sessionID uuid.UUID) error {
 	query := "DELETE FROM sessions WHERE id=$1"
 	_, err := storage.Exec(
 		ctx,

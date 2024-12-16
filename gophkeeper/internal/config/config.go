@@ -2,37 +2,27 @@ package config
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/caarlos0/env"
 )
 
 type Config struct {
 	// Common
-	ProjectName string `env:"PROJECT_NAME" envDefault:"auth"`
+	ProjectName string `env:"PROJECT_NAME" envDefault:"gophkeeper"`
 	IsDev       bool   `env:"IS_DEV" envDefault:"true"`
 
 	// Server
-	ServerAddress     string `env:"SERVER_ADDRESS" envDefault:"0.0.0.0:8080"`
-	GPRCServerAddress string `env:"GRPC_SERVER_ADDRESS" envDefault:"0.0.0.0:9090"`
+	ServerAddress string `env:"SERVER_ADDRESS" envDefault:"0.0.0.0:8081"`
 
 	// PSQL
 	PSQLHost     string `env:"PSQL_HOST" envDefault:"localhost"`
 	PSQLPort     string `env:"PSQL_PORT" envDefault:"5432"`
 	PSQLUsername string `env:"PSQL_USERNAME" envDefault:"postgres"`
 	PSQLPassword string `env:"PSQL_PASSWORD" envDefault:"351762"`
-	PSQLDBName   string `env:"PSQL_DB_NAME" envDefault:"gophkeeper_auth"`
+	PSQLDBName   string `env:"PSQL_DB_NAME" envDefault:"gophkeeper"`
 
-	// JWT
-	JWTSecretKey  string        `env:"JWT_SECRET_KEY" envDefault:"supersecretkey"`
-	JWTAccessExp  time.Duration `env:"JWT_ACCESS_EXP" envDefault:"15m"`
-	JWTRefreshExp time.Duration `env:"JWT_REFRESH_EXP" envDefault:"168h"`
-
-	// EMAIL_SENDER
-	SMTPHost     string `env:"SMTP_HOST" envDefault:"smtp.yandex.ru"`
-	SMTPPort     string `env:"SMTP_PORT" envDefault:"587"`
-	SMTPUsername string `env:"SMTP_USERNAME" envDefault:"egor2001zhukov@yandex.ru"`
-	SMTPPassword string `env:"SMTP_PASSWORD" envDefault:"spotgfkmxtzdtqvc"`
+	// AuthService
+	AuthServerAddress string `env:"AUTH_SERVER_ADDRESS" envDefault:"0.0.0.0:8080"`
 }
 
 func MustLoad() *Config {

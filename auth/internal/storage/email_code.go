@@ -1,4 +1,4 @@
-package psql
+package storage
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (storage *PSQLStorage) GetEmailCodeByID(ctx context.Context, emailCodeID uuid.UUID) (*models.EmailCode, error) {
+func (storage *AuthStorage) GetEmailCodeByID(ctx context.Context, emailCodeID uuid.UUID) (*models.EmailCode, error) {
 	query := "SELECT id, email, code, expires_at, number_of_attempts FROM email_codes WHERE id=$1"
 	row := storage.QueryRow(ctx, query, emailCodeID)
 	emailCode := models.EmailCode{}
@@ -34,7 +34,7 @@ func (storage *PSQLStorage) GetEmailCodeByID(ctx context.Context, emailCodeID uu
 	return &emailCode, nil
 }
 
-func (storage *PSQLStorage) UpdateEmailCode(ctx context.Context, emailCode *models.EmailCode) error {
+func (storage *AuthStorage) UpdateEmailCode(ctx context.Context, emailCode *models.EmailCode) error {
 	if emailCode.ID == uuid.Nil {
 		return fmt.Errorf("failed to update emailCode: ID cannot be empty")
 	}
@@ -54,7 +54,7 @@ func (storage *PSQLStorage) UpdateEmailCode(ctx context.Context, emailCode *mode
 	return nil
 }
 
-func (storage *PSQLStorage) DeleteEmailCode(ctx context.Context, emailCodeID uuid.UUID) error {
+func (storage *AuthStorage) DeleteEmailCode(ctx context.Context, emailCodeID uuid.UUID) error {
 	query := "DELETE FROM email_codes WHERE id=$1"
 	_, err := storage.Exec(ctx, query, emailCodeID)
 	if err != nil {
@@ -63,7 +63,7 @@ func (storage *PSQLStorage) DeleteEmailCode(ctx context.Context, emailCodeID uui
 	return nil
 }
 
-func (storage *PSQLStorage) InsertEmailCode(ctx context.Context, emailCode *models.EmailCode) error {
+func (storage *AuthStorage) InsertEmailCode(ctx context.Context, emailCode *models.EmailCode) error {
 	query := "INSERT INTO email_codes (id, email, code, expires_at, number_of_attempts) VALUES($1,$2,$3,$4,$5)"
 	_, err := storage.Exec(
 		ctx,
