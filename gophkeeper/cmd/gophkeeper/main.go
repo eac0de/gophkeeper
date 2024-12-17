@@ -12,6 +12,7 @@ import (
 	"github.com/eac0de/gophkeeper/internal/services"
 	"github.com/eac0de/gophkeeper/internal/storage"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,7 +78,7 @@ func main() {
 	defer gophKeeperStorage.Close()
 
 	userDataService := services.NewUserDataService(gophKeeperStorage)
-	authServiceConn, err := grpc.NewClient(cfg.AuthServerAddress)
+	authServiceConn, err := grpc.NewClient(cfg.AuthServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
 	}

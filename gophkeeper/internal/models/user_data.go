@@ -22,14 +22,11 @@ type BaseUserData struct {
 }
 
 func NewBaseUserData(name string, userID uuid.UUID, metadata Metadata) BaseUserData {
-	now := time.Now()
 	return BaseUserData{
-		ID:        uuid.New(),
-		UserID:    userID,
-		Name:      name,
-		CreatedAt: now,
-		UpdatedAt: now,
-		Metadata:  metadata,
+		ID:       uuid.New(),
+		UserID:   userID,
+		Name:     name,
+		Metadata: metadata,
 	}
 }
 

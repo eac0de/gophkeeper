@@ -1,43 +1,54 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE
-    users (
+    user_text_data (
         id UUID PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP NOT NULL,
-        is_super BOOLEAN NOT NULL
-    );
-
-CREATE INDEX email_users_idx ON users (email);
-
-CREATE TABLE
-    email_codes (
-        id UUID PRIMARY KEY,
-        email VARCHAR(255) NOT NULL,
-        code SMALLINT NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        number_of_attempts SMALLINT NOT NULL
-    );
-
-CREATE TABLE
-    sessions (
-        id UUID PRIMARY KEY,
-        token VARCHAR(255) UNIQUE NOT NULL,
         user_id UUID NOT NULL,
-        ip INET NOT NULL,
-        location VARCHAR(255) NOT NULL,
-        client_info VARCHAR(255) NOT NULL,
-        last_login TIMESTAMP NOT NULL,
-        CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        name VARCHAR(255) NOT NULL,
+        data VARCHAR(1024) NOT NULL,
+        metadata JSONB
+    );
+
+CREATE TABLE
+    user_auth_info (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        login VARCHAR(255) NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        metadata JSONB
+    );
+
+CREATE TABLE
+    user_file_data (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        path_to_file VARCHAR(255) NOT NULL,
+        metadata JSONB
+    );
+
+CREATE TABLE
+    user_bank_card (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        number VARCHAR(255) NOT NULL,
+        card_holder VARCHAR(255) NOT NULL,
+        expire_date VARCHAR(255) NOT NULL,
+        csc SMALLINT NOT NULL,
+        metadata JSONB
     );
 
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE refresh_tokens;
+DROP TABLE user_text_data;
 
-DROP TABLE email_codes;
+DROP TABLE user_auth_info;
 
-DROP TABLE users;
+DROP TABLE user_file_data;
+
+DROP TABLE user_bank_card;
 
 -- +goose StatementEnd

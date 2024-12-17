@@ -41,6 +41,8 @@ func NewMock() *EmailSenderMock {
 
 func (sender *EmailSenderMock) Send(subject, body string, recipients ...string) error {
 	msg := fmt.Sprintf("Subject: %s\nBody: %s\n", subject, body)
+	fmt.Println("_____ Start EmailSenderMock message _____")
 	fmt.Print(msg)
+	fmt.Println("_____  End EmailSenderMock message  _____")
 	return nil
 }

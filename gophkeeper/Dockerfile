@@ -2,7 +2,7 @@
 FROM golang:1.23.3 AS builder
 
 # Устанавливаем рабочую директорию в контейнере
-WORKDIR /auth
+WORKDIR /gophkeeper
 
 # Копируем все файлы проекта в контейнер
 COPY . .
@@ -11,17 +11,17 @@ COPY . .
 RUN go mod download
 
 # Собираем бинарный файл
-RUN go build -o auth cmd/auth/main.go
+RUN go build -o gophkeeper cmd/gophkeeper/main.go
 
 # Используем минимальный образ для запуска собранного приложения
 FROM debian:bookworm-slim
 
 # Устанавливаем рабочую директорию для запуска приложения
-WORKDIR /auth
+WORKDIR /gophkeeper
 
 # Копируем бинарный файл из стадии сборки
-COPY --from=builder /auth/auth .
-COPY --from=builder /auth/migrations /auth/migrations
+COPY --from=builder /gophkeeper/gophkeeper .
+COPY --from=builder /gophkeeper/migrations /gophkeeper/migrations
 
 
 
