@@ -22,7 +22,7 @@ type Config struct {
 	PSQLDBName   string `env:"PSQL_DB_NAME" envDefault:"gophkeeper"`
 
 	// AuthService
-	AuthServerAddress string `env:"AUTH_SERVER_ADDRESS" envDefault:"0.0.0.0:8080"`
+	AuthGRPCServerAddress string `env:"AUTH_GRPC_SERVER_ADDRESS" envDefault:"0.0.0.0:9090"`
 }
 
 func MustLoad() *Config {

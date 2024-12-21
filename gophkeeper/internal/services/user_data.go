@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
@@ -50,14 +53,14 @@ func (uds *UserDataService) InsertUserTextData(
 	name string,
 	text string,
 	metadata map[string]interface{},
-) (models.UserTextData, error) {
+) (*models.UserTextData, error) {
 	userTextData := models.NewUserTextData(name, userID, metadata, text)
 	err := uds.store.InsertUserTextData(ctx, &userTextData)
 	if err != nil {
-		return models.UserTextData{}, err
+		return nil, err
 	}
 
-	return userTextData, nil
+	return &userTextData, nil
 }
 
 func (uds *UserDataService) InsertUserFileData(
@@ -65,15 +68,14 @@ func (uds *UserDataService) InsertUserFileData(
 	userID uuid.UUID,
 	name string,
 	pathToFile string,
-	metadata map[string]interface{},
-) (models.UserFileData, error) {
-	userFileData := models.NewUserFileData(name, userID, metadata, pathToFile)
+) (*models.UserFileData, error) {
+	userFileData := models.NewUserFileData(name, userID, pathToFile)
 	err := uds.store.InsertUserFileData(ctx, &userFileData)
 	if err != nil {
-		return models.UserFileData{}, err
+		return nil, err
 	}
 
-	return userFileData, nil
+	return &userFileData, nil
 }
 
 func (uds *UserDataService) InsertUserAuthInfo(
@@ -82,13 +84,13 @@ func (uds *UserDataService) InsertUserAuthInfo(
 	name string,
 	login, password string,
 	metadata map[string]interface{},
-) (models.UserAuthInfo, error) {
+) (*models.UserAuthInfo, error) {
 	userAuthInfo := models.NewUserAuthInfo(name, userID, metadata, login, password)
 	err := uds.store.InsertUserAuthInfo(ctx, &userAuthInfo)
 	if err != nil {
-		return models.UserAuthInfo{}, err
+		return nil, err
 	}
-	return userAuthInfo, nil
+	return &userAuthInfo, nil
 }
 
 func (uds *UserDataService) InsertUserBankCard(
@@ -122,12 +124,18 @@ func (uds *UserDataService) UpdateUserTextData(
 	name string,
 	text string,
 	metadata map[string]interface{},
-) (models.UserTextData, error) {
-	userTextData := models.NewUserTextData(name, userID, metadata, text)
-	userTextData.ID = ID
-	err := uds.store.UpdateUserTextData(ctx, &userTextData)
+) (*models.UserTextData, error) {
+	userTextData, err := uds.store.GetUserTextData(ctx, ID, userID)
 	if err != nil {
-		return models.UserTextData{}, err
+		return nil, err
+	}
+	userTextData.Name = name
+	userTextData.Data = text
+	userTextData.Metadata = metadata
+	userTextData.UpdatedAt = time.Now()
+	err = uds.store.UpdateUserTextData(ctx, userTextData)
+	if err != nil {
+		return nil, err
 	}
 	return userTextData, nil
 }
@@ -137,16 +145,26 @@ func (uds *UserDataService) UpdateUserFileData(
 	userID uuid.UUID,
 	ID uuid.UUID,
 	name string,
-	pathToFile string,
 	metadata map[string]interface{},
-) error {
-	userFileData := models.NewUserFileData(name, userID, metadata, pathToFile)
-	userFileData.ID = ID
-	err := uds.store.UpdateUserFileData(ctx, &userFileData)
+) (*models.UserFileData, error) {
+	userFileData, err := uds.store.GetUserFileData(ctx, ID, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	dir, _ := strings.CutSuffix(userFileData.PathToFile, userFileData.Name)
+	newPathToFile := fmt.Sprintf("%s/%s", dir, name)
+	if err := os.Rename(userFileData.PathToFile, newPathToFile); err != nil {
+		return nil, err
+	}
+	userFileData.Name = name
+	userFileData.PathToFile = newPathToFile
+	userFileData.Metadata = metadata
+	userFileData.UpdatedAt = time.Now()
+	err = uds.store.UpdateUserFileData(ctx, userFileData)
+	if err != nil {
+		return nil, err
+	}
+	return userFileData, nil
 }
 
 func (uds *UserDataService) UpdateUserAuthInfo(
@@ -156,14 +174,14 @@ func (uds *UserDataService) UpdateUserAuthInfo(
 	name string,
 	login, password string,
 	metadata map[string]interface{},
-) (models.UserAuthInfo, error) {
+) (*models.UserAuthInfo, error) {
 	userAuthInfo := models.NewUserAuthInfo(name, userID, metadata, login, password)
 	userAuthInfo.ID = ID
 	err := uds.store.UpdateUserAuthInfo(ctx, &userAuthInfo)
 	if err != nil {
-		return models.UserAuthInfo{}, err
+		return nil, err
 	}
-	return userAuthInfo, nil
+	return &userAuthInfo, nil
 }
 
 func (uds *UserDataService) UpdateUserBankCard(
@@ -173,14 +191,14 @@ func (uds *UserDataService) UpdateUserBankCard(
 	name string,
 	number, cardHolder, expireDate, csc string,
 	metadata map[string]interface{},
-) (models.UserBankCard, error) {
+) (*models.UserBankCard, error) {
 	userBankCard := models.NewUserBankCard(name, userID, metadata, number, cardHolder, expireDate, csc)
 	userBankCard.ID = ID
 	err := uds.store.UpdateUserBankCard(ctx, &userBankCard)
 	if err != nil {
-		return models.UserBankCard{}, err
+		return nil, err
 	}
-	return userBankCard, nil
+	return &userBankCard, nil
 }
 
 func (uds *UserDataService) GetUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserTextData, error) {
@@ -204,6 +222,15 @@ func (uds *UserDataService) DeleteUserTextData(ctx context.Context, dataID uuid.
 }
 
 func (uds *UserDataService) DeleteUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error {
+	userFileData, err := uds.store.GetUserFileData(ctx, dataID, userID)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(userFileData.PathToFile); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
 	return uds.store.DeleteUserFileData(ctx, dataID, userID)
 }
 

@@ -18,15 +18,17 @@ type BaseUserData struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 
-	Metadata
+	Metadata Metadata `db:"metadata" json:"metadata"`
 }
 
 func NewBaseUserData(name string, userID uuid.UUID, metadata Metadata) BaseUserData {
 	return BaseUserData{
-		ID:       uuid.New(),
-		UserID:   userID,
-		Name:     name,
-		Metadata: metadata,
+		ID:        uuid.New(),
+		UserID:    userID,
+		Name:      name,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Metadata:  metadata,
 	}
 }
 
@@ -64,9 +66,9 @@ type UserFileData struct {
 	PathToFile string `db:"path_to_file" json:"path_to_file"`
 }
 
-func NewUserFileData(name string, userID uuid.UUID, metadata Metadata, pathToFile string) UserFileData {
+func NewUserFileData(name string, userID uuid.UUID, pathToFile string) UserFileData {
 	return UserFileData{
-		BaseUserData: NewBaseUserData(name, userID, metadata),
+		BaseUserData: NewBaseUserData(name, userID, Metadata{}),
 		PathToFile:   pathToFile,
 	}
 }

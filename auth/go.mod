@@ -4,7 +4,7 @@ go 1.23.3
 
 require (
 	github.com/caarlos0/env v3.5.0+incompatible
-	github.com/eac0de/gophkeeper/shared v0.0.0-20241208200938-32fd4283516a
+	github.com/eac0de/gophkeeper/shared v0.0.0-20241217204540-737434b97630
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0

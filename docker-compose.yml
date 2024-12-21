@@ -38,6 +38,8 @@ services:
     ports:
       - "8081:8081"
       - "9091:9091"
+    volumes:
+      - ./data/user_files:/user_files
     restart: always
 
   gophkeeper_data:
@@ -51,7 +53,3 @@ services:
       - "5432"
     volumes:
       - ./data/gophkeeper_data:/var/lib/postgresql/data
-
-volumes:
-  gophkeeper_auth_db:
-  gophkeeper_db:

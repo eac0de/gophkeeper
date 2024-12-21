@@ -1,24 +1,46 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
-	"github.com/eac0de/gophkeeper/internal/services"
+	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
 )
 
+type IUserDataService interface {
+	InsertUserTextData(ctx context.Context, userID uuid.UUID, name string, text string, metadata map[string]interface{}) (*models.UserTextData, error)
+	InsertUserFileData(ctx context.Context, userID uuid.UUID, name string, pathToFile string) (*models.UserFileData, error)
+	InsertUserAuthInfo(ctx context.Context, userID uuid.UUID, name, login, password string, metadata map[string]interface{}) (*models.UserAuthInfo, error)
+	InsertUserBankCard(ctx context.Context, userID uuid.UUID, name, number, cardHolder, expireDate, csc string, metadata map[string]interface{}) (*models.UserBankCard, error)
+
+	UpdateUserTextData(ctx context.Context, userID uuid.UUID, ID uuid.UUID, name, text string, metadata map[string]interface{}) (*models.UserTextData, error)
+	UpdateUserFileData(ctx context.Context, userID uuid.UUID, ID uuid.UUID, name string, metadata map[string]interface{}) (*models.UserFileData, error)
+	UpdateUserAuthInfo(ctx context.Context, userID uuid.UUID, ID uuid.UUID, name, login, password string, metadata map[string]interface{}) (*models.UserAuthInfo, error)
+	UpdateUserBankCard(ctx context.Context, userID uuid.UUID, ID uuid.UUID, name, number, cardHolder, expireDate, csc string, metadata map[string]interface{}) (*models.UserBankCard, error)
+
+	GetUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserTextData, error)
+	GetUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserFileData, error)
+	GetUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserAuthInfo, error)
+	GetUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserBankCard, error)
+
+	DeleteUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
+	DeleteUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
+	DeleteUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
+	DeleteUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
+}
+
 type UserDataHandlers struct {
-	userDataService *services.UserDataService
+	userDataService IUserDataService
 }
 
 func NewUserDataHandlers(
-	userDataService *services.UserDataService,
+	userDataService IUserDataService,
 ) *UserDataHandlers {
 	return &UserDataHandlers{
 		userDataService: userDataService,
@@ -214,13 +236,6 @@ func (ah *UserDataHandlers) UpdateUserTextData(c *gin.Context) {
 
 func (ah *UserDataHandlers) InsertUserFileData(c *gin.Context) {
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
-	var requestData struct {
-		Metadata map[string]interface{} `json:"metadata"`
-	}
-	if err := c.BindJSON(&requestData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
-		return
-	}
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
@@ -259,7 +274,6 @@ func (ah *UserDataHandlers) InsertUserFileData(c *gin.Context) {
 		userID,
 		file.Filename,
 		pathToFile,
-		requestData.Metadata,
 	)
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
@@ -283,6 +297,22 @@ func (ah *UserDataHandlers) GetUserFileData(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, userFileData)
+}
+
+func (ah *UserDataHandlers) DownloadUserFile(c *gin.Context) {
+	dataID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid data id"})
+		return
+	}
+	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
+	userFileData, err := ah.userDataService.GetUserFileData(c.Request.Context(), dataID, userID)
+	if err != nil {
+		msg, statusCode := httperror.GetMessageAndStatusCode(err)
+		c.JSON(statusCode, gin.H{"detail": msg})
+		return
+	}
+	c.FileAttachment(userFileData.PathToFile, userFileData.Name)
 }
 
 func (ah *UserDataHandlers) DeleteUserFileData(c *gin.Context) {
@@ -320,24 +350,12 @@ func (ah *UserDataHandlers) UpdateUserFileData(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "name is required"})
 		return
 	}
-	userFileData, err := ah.userDataService.GetUserFileData(c.Request.Context(), dataID, userID)
-	if err != nil {
-		msg, statusCode := httperror.GetMessageAndStatusCode(err)
-		c.JSON(statusCode, gin.H{"detail": msg})
-		return
-	}
-	dir, _ := strings.CutSuffix(userFileData.PathToFile, userFileData.Name)
-	newPathToFile := fmt.Sprintf("%s/%s", dir, *requestData.Name)
-	if err := os.Rename(userFileData.PathToFile, newPathToFile); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	err = ah.userDataService.UpdateUserFileData(
+
+	userFileData, err := ah.userDataService.UpdateUserFileData(
 		c.Request.Context(),
 		userID,
 		dataID,
 		*requestData.Name,
-		newPathToFile,
 		requestData.Metadata,
 	)
 	if err != nil {

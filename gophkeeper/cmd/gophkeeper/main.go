@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func setupRouter(
+func SetupRouter(
 	authServiceConn *grpc.ClientConn,
 	userDataService *services.UserDataService,
 ) *gin.Engine {
@@ -38,6 +38,7 @@ func setupRouter(
 	authenticatedGroup.POST("/text_data/", userDataHandlers.InsertUserTextData)
 
 	authenticatedGroup.GET("/file_data/:id/", userDataHandlers.GetUserFileData)
+	authenticatedGroup.GET("/file_data/:id/download/", userDataHandlers.DownloadUserFile)
 	authenticatedGroup.DELETE("/file_data/:id/", userDataHandlers.DeleteUserFileData)
 	authenticatedGroup.PUT("/file_data/:id/", userDataHandlers.UpdateUserFileData)
 	authenticatedGroup.POST("/file_data/", userDataHandlers.InsertUserFileData)
@@ -78,11 +79,11 @@ func main() {
 	defer gophKeeperStorage.Close()
 
 	userDataService := services.NewUserDataService(gophKeeperStorage)
-	authServiceConn, err := grpc.NewClient(cfg.AuthServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authServiceConn, err := grpc.NewClient(cfg.AuthGRPCServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
 	}
-	r := setupRouter(authServiceConn, userDataService)
+	r := SetupRouter(authServiceConn, userDataService)
 	go r.Run(cfg.ServerAddress)
 
 	sigChan := make(chan os.Signal, 1)
