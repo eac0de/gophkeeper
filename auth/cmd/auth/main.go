@@ -30,7 +30,7 @@ func setupRouter(
 	)
 
 	rootGroup.POST("code/generate/", authHandlers.GenerateEmailCodeHandler)
-	rootGroup.POST("code/check/", authHandlers.NewCheckEmailCodeHandler("/api/auth/token/"))
+	rootGroup.POST("code/verify/", authHandlers.NewVerifyEmailCodeHandler("/api/auth/token/"))
 	rootGroup.POST("token/", authHandlers.NewRefreshTokenHandler("/api/auth/token/"))
 	rootGroup.DELETE("token/", authHandlers.NewDeleteCurrentSession("/api/auth/token/"))
 

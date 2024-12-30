@@ -18,7 +18,7 @@ func (e *HTTPError) Unwrap() error {
 	return e.err
 }
 
-func New(err error, msg string, statusCode int) error {
+func New(err error, msg string, statusCode int) *HTTPError {
 	return &HTTPError{
 		err:        err,
 		msg:        msg,

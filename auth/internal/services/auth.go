@@ -72,7 +72,7 @@ func (as *AuthService) GenerateEmailCode(
 	return emailCode, nil
 }
 
-func (as *AuthService) CheckEmailCode(
+func (as *AuthService) VerifyEmailCode(
 	ctx context.Context,
 	emailCodeID uuid.UUID,
 	code uint16,

@@ -46,7 +46,7 @@ func (ah *AuthHandlers) GenerateEmailCodeHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"email_code_id": emailCode.ID})
 }
 
-func (ah *AuthHandlers) NewCheckEmailCodeHandler(rt_path string) gin.HandlerFunc {
+func (ah *AuthHandlers) NewVerifyEmailCodeHandler(rt_path string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var requestData struct {
 			EmailCodeID *uuid.UUID `json:"email_code_id"`
@@ -60,7 +60,7 @@ func (ah *AuthHandlers) NewCheckEmailCodeHandler(rt_path string) gin.HandlerFunc
 			c.JSON(http.StatusBadRequest, gin.H{"detail": "email_code_id and code are required"})
 			return
 		}
-		user, isNewUser, err := ah.authService.CheckEmailCode(c.Request.Context(), *requestData.EmailCodeID, *requestData.Code)
+		user, isNewUser, err := ah.authService.VerifyEmailCode(c.Request.Context(), *requestData.EmailCodeID, *requestData.Code)
 		if err != nil {
 			msg, statusCode := httperror.GetMessageAndStatusCode(err)
 			c.JSON(statusCode, gin.H{"detail": msg})

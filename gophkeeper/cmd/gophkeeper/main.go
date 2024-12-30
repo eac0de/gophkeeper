@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(
+func setupRouter(
 	authServiceConn *grpc.ClientConn,
 	userDataService *services.UserDataService,
 ) *gin.Engine {
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	r := SetupRouter(authServiceConn, userDataService)
+	r := setupRouter(authServiceConn, userDataService)
 	go r.Run(cfg.ServerAddress)
 
 	sigChan := make(chan os.Signal, 1)
