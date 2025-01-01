@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
@@ -28,6 +29,11 @@ type IUserDataService interface {
 	GetUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserFileData, error)
 	GetUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserAuthInfo, error)
 	GetUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserBankCard, error)
+
+	GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error)
+	GetUserFileDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserFileData, error)
+	GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error)
+	GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error)
 
 	DeleteUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
 	DeleteUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
@@ -80,6 +86,22 @@ func (ah *UserDataHandlers) GetUserAuthInfo(c *gin.Context) {
 	}
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
 	userAuthInfo, err := ah.userDataService.GetUserAuthInfo(c.Request.Context(), dataID, userID)
+	if err != nil {
+		msg, statusCode := httperror.GetMessageAndStatusCode(err)
+		c.JSON(statusCode, gin.H{"detail": msg})
+		return
+	}
+	c.JSON(http.StatusOK, userAuthInfo)
+}
+
+func (ah *UserDataHandlers) GetUserAuthInfoList(c *gin.Context) {
+	var offset int64
+	offsetString := c.Query("offset")
+	if offsetString != "" {
+		offset, _ = strconv.ParseInt(offsetString, 10, 64)
+	}
+	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
+	userAuthInfo, err := ah.userDataService.GetUserAuthInfoList(c.Request.Context(), userID, int(offset))
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
 		c.JSON(statusCode, gin.H{"detail": msg})
@@ -174,6 +196,22 @@ func (ah *UserDataHandlers) GetUserTextData(c *gin.Context) {
 	}
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
 	userTextData, err := ah.userDataService.GetUserTextData(c.Request.Context(), dataID, userID)
+	if err != nil {
+		msg, statusCode := httperror.GetMessageAndStatusCode(err)
+		c.JSON(statusCode, gin.H{"detail": msg})
+		return
+	}
+	c.JSON(http.StatusOK, userTextData)
+}
+
+func (ah *UserDataHandlers) GetUserTextDataList(c *gin.Context) {
+	var offset int64
+	offsetString := c.Query("offset")
+	if offsetString != "" {
+		offset, _ = strconv.ParseInt(offsetString, 10, 64)
+	}
+	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
+	userTextData, err := ah.userDataService.GetUserTextDataList(c.Request.Context(), userID, int(offset))
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
 		c.JSON(statusCode, gin.H{"detail": msg})

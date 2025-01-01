@@ -63,7 +63,7 @@ func NewUserTextData(name string, userID uuid.UUID, metadata Metadata, text stri
 // Бинарные данные
 type UserFileData struct {
 	BaseUserData
-	PathToFile string `db:"path_to_file" json:"path_to_file"`
+	PathToFile string `db:"path_to_file" json:"-"`
 }
 
 func NewUserFileData(name string, userID uuid.UUID, pathToFile string) UserFileData {

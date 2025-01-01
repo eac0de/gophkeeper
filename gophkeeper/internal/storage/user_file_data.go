@@ -66,3 +66,35 @@ func (s *GophKeeperStorage) DeleteUserFileData(ctx context.Context, dataID uuid.
 	_, err := s.Exec(ctx, query, dataID, userID)
 	return err
 }
+
+func (s *GophKeeperStorage) GetUserFileDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserFileData, error) {
+	query := `SELECT id, name, created_at, updated_at, path_to_file, metadata FROM user_file_data WHERE user_id=$1 LIMIT 20 OFFSET $2`
+
+	rows, err := s.Query(ctx, query, userID, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userFileDataList []models.UserFileData
+	for rows.Next() {
+		var userFileData models.UserFileData
+		err := rows.Scan(
+			&userFileData.ID,
+			&userFileData.Name,
+			&userFileData.CreatedAt,
+			&userFileData.UpdatedAt,
+			&userFileData.PathToFile,
+			&userFileData.Metadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		userFileData.UserID = userID
+		userFileDataList = append(userFileDataList, userFileData)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return userFileDataList, nil
+}

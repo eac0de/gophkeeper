@@ -81,7 +81,7 @@ func (m loginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.invalidInput = true
 					return m, nil
 				}
-				statusCode, tokens, err := m.client.VerifyEmailCode(m.emailCodeId, int(i))
+				statusCode, err := m.client.VerifyEmailCode(m.emailCodeId, int(i))
 				if statusCode == 0 && err != nil {
 					m.errMsg = err.Error()
 					return m, nil
@@ -102,7 +102,7 @@ func (m loginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 				}
-				homeModel := InitialInputModel(*tokens, m.client)
+				homeModel := InitialInputModel(m.client)
 				return homeModel, nil
 			}
 			return m, nil
@@ -156,13 +156,13 @@ func validateEmail(email string) bool {
 	return err == nil
 }
 
-func SaveTokens(accessToken, refreshToken string) {
+func SaveTokens(tokens schemes.Tokens) {
 	file, err := os.OpenFile(os.TempDir()+"/gophkeeper_auth.json", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	err = json.NewEncoder(file).Encode(schemes.Tokens{AccessToken: accessToken, RefreshToken: refreshToken})
+	err = json.NewEncoder(file).Encode(schemes.Tokens{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken})
 	if err != nil {
 		log.Fatal(err)
 	}

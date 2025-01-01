@@ -45,13 +45,13 @@ func (s *GophKeeperStorage) UpdateUserAuthInfo(ctx context.Context, userAuthInfo
 }
 
 func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, userID uuid.UUID, dataID uuid.UUID) (*models.UserAuthInfo, error) {
-	query := `SELECT id, user_id, name, login, password, metadata FROM user_auth_info WHERE id=$1 AND user_id=$2`
+	query := `SELECT name, created_at, updated_at, login, password, metadata FROM user_auth_info WHERE id=$1 AND user_id=$2`
 	userAuthInfo := models.UserAuthInfo{BaseUserData: models.BaseUserData{ID: dataID, UserID: userID}}
 	row := s.QueryRow(ctx, query, dataID, userID)
 	err := row.Scan(
-		&userAuthInfo.ID,
-		&userAuthInfo.UserID,
 		&userAuthInfo.Name,
+		&userAuthInfo.CreatedAt,
+		&userAuthInfo.UpdatedAt,
 		&userAuthInfo.Login,
 		&userAuthInfo.Password,
 		&userAuthInfo.Metadata,
@@ -63,6 +63,39 @@ func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, userID uuid.UUI
 		return nil, err
 	}
 	return &userAuthInfo, nil
+}
+
+func (s *GophKeeperStorage) GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error) {
+	query := `SELECT id, name, created_at, updated_at, login, password, metadata FROM user_auth_info WHERE user_id=$1 LIMIT 20 OFFSET $2`
+
+	rows, err := s.Query(ctx, query, userID, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userAuthInfoList []models.UserAuthInfo
+	for rows.Next() {
+		var userAuthInfo models.UserAuthInfo
+		err := rows.Scan(
+			&userAuthInfo.ID,
+			&userAuthInfo.Name,
+			&userAuthInfo.CreatedAt,
+			&userAuthInfo.UpdatedAt,
+			&userAuthInfo.Login,
+			&userAuthInfo.Password,
+			&userAuthInfo.Metadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		userAuthInfo.UserID = userID
+		userAuthInfoList = append(userAuthInfoList, userAuthInfo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return userAuthInfoList, nil
 }
 
 func (s *GophKeeperStorage) DeleteUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error {

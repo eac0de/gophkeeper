@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eac0de/gophkeeper/client/internal/client"
-	"github.com/eac0de/gophkeeper/client/internal/schemes"
 )
 
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
@@ -43,7 +42,6 @@ func (i listItem) Description() string { return i.desc }
 func (i listItem) FilterValue() string { return i.title }
 
 type inputModel struct {
-	tokens     schemes.Tokens
 	Tabs       []string
 	TabContent []string
 	activeTab  int
@@ -51,7 +49,7 @@ type inputModel struct {
 	list       list.Model
 }
 
-func InitialInputModel(tokens schemes.Tokens, client *client.APIClient) inputModel {
+func InitialInputModel(client *client.APIClient) inputModel {
 	items := []list.Item{
 		listItem{title: "Raspberry Pi’s", desc: "I have ’em all over my house"},
 		listItem{title: "Nutella", desc: "It's good on toast"},
@@ -85,7 +83,6 @@ func InitialInputModel(tokens schemes.Tokens, client *client.APIClient) inputMod
 	return inputModel{
 		Tabs:       []string{"      Texts      ", "      Files      ", "      BankCards      ", "      AuthInfos      "},
 		TabContent: []string{"", "", "", ""},
-		tokens:     tokens,
 		client:     client,
 		list:       list,
 	}
@@ -100,7 +97,7 @@ func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c":
-			SaveTokens(m.tokens.AccessToken, m.tokens.RefreshToken)
+			SaveTokens(m.client.Tokens)
 			return m, tea.Quit
 		case "right":
 			m.activeTab = min(m.activeTab+1, 3)

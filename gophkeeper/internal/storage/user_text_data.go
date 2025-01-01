@@ -48,3 +48,35 @@ func (s *GophKeeperStorage) DeleteUserTextData(ctx context.Context, dataID uuid.
 	_, err := s.Exec(ctx, query, dataID, userID)
 	return err
 }
+
+func (s *GophKeeperStorage) GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error) {
+	query := `SELECT id, name, created_at, updated_at, data, metadata FROM user_text_data WHERE user_id=$1 LIMIT 20 OFFSET $2`
+
+	rows, err := s.Query(ctx, query, userID, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userTextDataList []models.UserTextData
+	for rows.Next() {
+		var userTextData models.UserTextData
+		err := rows.Scan(
+			&userTextData.ID,
+			&userTextData.Name,
+			&userTextData.CreatedAt,
+			&userTextData.UpdatedAt,
+			&userTextData.Data,
+			&userTextData.Metadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		userTextData.UserID = userID
+		userTextDataList = append(userTextDataList, userTextData)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return userTextDataList, nil
+}

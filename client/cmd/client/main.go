@@ -18,8 +18,9 @@ func main() {
 		"localhost:8081",
 		"localhost:8080",
 	)
-	if tokens.RefreshToken != "" {
-		model = models.InitialInputModel(tokens, apiClient)
+	if tokens.AccessToken != "" || tokens.RefreshToken != "" {
+		apiClient.Tokens = tokens
+		model = models.InitialInputModel(apiClient)
 
 	}
 	if model == nil {

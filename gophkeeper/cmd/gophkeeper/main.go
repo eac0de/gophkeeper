@@ -27,26 +27,30 @@ func setupRouter(
 
 	userDataHandlers := handlers.NewUserDataHandlers(userDataService)
 
-	authenticatedGroup.GET("/user_auth_info/:id/", userDataHandlers.GetUserAuthInfo)
-	authenticatedGroup.DELETE("/user_auth_info/:id/", userDataHandlers.DeleteUserAuthInfo)
-	authenticatedGroup.PUT("/user_auth_info/:id/", userDataHandlers.UpdateUserAuthInfo)
-	authenticatedGroup.POST("/user_auth_info/", userDataHandlers.InsertUserAuthInfo)
+	authenticatedGroup.GET("/auth_info/", userDataHandlers.GetUserAuthInfoList)
+	authenticatedGroup.GET("/auth_info/:id/", userDataHandlers.GetUserAuthInfo)
+	authenticatedGroup.DELETE("/auth_info/:id/", userDataHandlers.DeleteUserAuthInfo)
+	authenticatedGroup.PUT("/auth_info/:id/", userDataHandlers.UpdateUserAuthInfo)
+	authenticatedGroup.POST("/auth_info/", userDataHandlers.InsertUserAuthInfo)
 
+	authenticatedGroup.GET("/text_data/", userDataHandlers.GetUserTextDataList)
 	authenticatedGroup.GET("/text_data/:id/", userDataHandlers.GetUserTextData)
 	authenticatedGroup.DELETE("/text_data/:id/", userDataHandlers.DeleteUserTextData)
 	authenticatedGroup.PUT("/text_data/:id/", userDataHandlers.UpdateUserTextData)
 	authenticatedGroup.POST("/text_data/", userDataHandlers.InsertUserTextData)
 
+	authenticatedGroup.GET("/file_data/", userDataHandlers.GetUserFileDataList)
 	authenticatedGroup.GET("/file_data/:id/", userDataHandlers.GetUserFileData)
 	authenticatedGroup.GET("/file_data/:id/download/", userDataHandlers.DownloadUserFile)
 	authenticatedGroup.DELETE("/file_data/:id/", userDataHandlers.DeleteUserFileData)
 	authenticatedGroup.PUT("/file_data/:id/", userDataHandlers.UpdateUserFileData)
 	authenticatedGroup.POST("/file_data/", userDataHandlers.InsertUserFileData)
 
-	authenticatedGroup.GET("bank_card/:id/", userDataHandlers.GetUserBankCard)
-	authenticatedGroup.DELETE("bank_card/:id/", userDataHandlers.DeleteUserBankCard)
-	authenticatedGroup.PUT("bank_card/:id/", userDataHandlers.UpdateUserBankCard)
-	authenticatedGroup.POST("bank_card/", userDataHandlers.InsertUserBankCard)
+	authenticatedGroup.GET("bank_cards/", userDataHandlers.GetUserBankCardList)
+	authenticatedGroup.GET("bank_cards/:id/", userDataHandlers.GetUserBankCard)
+	authenticatedGroup.DELETE("bank_cards/:id/", userDataHandlers.DeleteUserBankCard)
+	authenticatedGroup.PUT("bank_cards/:id/", userDataHandlers.UpdateUserBankCard)
+	authenticatedGroup.POST("bank_cards/", userDataHandlers.InsertUserBankCard)
 
 	return router
 }

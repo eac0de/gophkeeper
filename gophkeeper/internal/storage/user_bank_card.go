@@ -72,3 +72,38 @@ func (s *GophKeeperStorage) GetUserBankCard(ctx context.Context, dataID uuid.UUI
 	}
 	return &userBankCard, nil
 }
+
+func (s *GophKeeperStorage) GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error) {
+	query := `SELECT id, name, created_at, updated_at, number, card_holder, expire_date, csc, metadata FROM user_bank_card WHERE user_id=$1 LIMIT 20 OFFSET $2`
+
+	rows, err := s.Query(ctx, query, userID, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userBankCardList []models.UserBankCard
+	for rows.Next() {
+		var userBankCard models.UserBankCard
+		err := rows.Scan(
+			&userBankCard.ID,
+			&userBankCard.Name,
+			&userBankCard.CreatedAt,
+			&userBankCard.UpdatedAt,
+			&userBankCard.Number,
+			&userBankCard.CardHolder,
+			&userBankCard.ExpireDate,
+			&userBankCard.CSC,
+			&userBankCard.Metadata,
+		)
+		if err != nil {
+			return nil, err
+		}
+		userBankCard.UserID = userID
+		userBankCardList = append(userBankCardList, userBankCard)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return userBankCardList, nil
+}

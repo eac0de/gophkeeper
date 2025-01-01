@@ -31,6 +31,11 @@ type IUserDataStore interface {
 	GetUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserAuthInfo, error)
 	GetUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserBankCard, error)
 
+	GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error)
+	GetUserFileDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserFileData, error)
+	GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error)
+	GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error)
+
 	DeleteUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
 	DeleteUserFileData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
 	DeleteUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error
@@ -215,6 +220,22 @@ func (uds *UserDataService) GetUserAuthInfo(ctx context.Context, dataID uuid.UUI
 
 func (uds *UserDataService) GetUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserBankCard, error) {
 	return uds.store.GetUserBankCard(ctx, dataID, userID)
+}
+
+func (uds *UserDataService) GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error) {
+	return uds.store.GetUserTextDataList(ctx, userID, offset)
+}
+
+func (uds *UserDataService) GetUserFileDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserFileData, error) {
+	return uds.store.GetUserFileDataList(ctx, userID, offset)
+}
+
+func (uds *UserDataService) GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error) {
+	return uds.store.GetUserAuthInfoList(ctx, userID, offset)
+}
+
+func (uds *UserDataService) GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error) {
+	return uds.store.GetUserBankCardList(ctx, userID, offset)
 }
 
 func (uds *UserDataService) DeleteUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error {
