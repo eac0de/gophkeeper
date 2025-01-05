@@ -31,6 +31,7 @@ CREATE TABLE
         created_at TIMESTAMP NOT NULL,
         updated_at TIMESTAMP NOT NULL,
         path_to_file VARCHAR(255) NOT NULL,
+        ext VARCHAR(16) NOT NULL,
         metadata JSONB
     );
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/eac0de/gophkeeper/internal/models"
@@ -16,7 +17,7 @@ import (
 
 type IUserDataService interface {
 	InsertUserTextData(ctx context.Context, userID uuid.UUID, name string, text string, metadata map[string]interface{}) (*models.UserTextData, error)
-	InsertUserFileData(ctx context.Context, userID uuid.UUID, name string, pathToFile string) (*models.UserFileData, error)
+	InsertUserFileData(ctx context.Context, userID uuid.UUID, name string, pathToFile string, ext string) (*models.UserFileData, error)
 	InsertUserAuthInfo(ctx context.Context, userID uuid.UUID, name, login, password string, metadata map[string]interface{}) (*models.UserAuthInfo, error)
 	InsertUserBankCard(ctx context.Context, userID uuid.UUID, name, number, cardHolder, expireDate, csc string, metadata map[string]interface{}) (*models.UserBankCard, error)
 
@@ -101,13 +102,13 @@ func (ah *UserDataHandlers) GetUserAuthInfoList(c *gin.Context) {
 		offset, _ = strconv.ParseInt(offsetString, 10, 64)
 	}
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
-	userAuthInfo, err := ah.userDataService.GetUserAuthInfoList(c.Request.Context(), userID, int(offset))
+	userAuthInfoList, err := ah.userDataService.GetUserAuthInfoList(c.Request.Context(), userID, int(offset))
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
 		c.JSON(statusCode, gin.H{"detail": msg})
 		return
 	}
-	c.JSON(http.StatusOK, userAuthInfo)
+	c.JSON(http.StatusOK, userAuthInfoList)
 }
 
 func (ah *UserDataHandlers) DeleteUserAuthInfo(c *gin.Context) {
@@ -211,13 +212,14 @@ func (ah *UserDataHandlers) GetUserTextDataList(c *gin.Context) {
 		offset, _ = strconv.ParseInt(offsetString, 10, 64)
 	}
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
-	userTextData, err := ah.userDataService.GetUserTextDataList(c.Request.Context(), userID, int(offset))
+	userTextDataList, err := ah.userDataService.GetUserTextDataList(c.Request.Context(), userID, int(offset))
+
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
 		c.JSON(statusCode, gin.H{"detail": msg})
 		return
 	}
-	c.JSON(http.StatusOK, userTextData)
+	c.JSON(http.StatusOK, userTextDataList)
 }
 
 func (ah *UserDataHandlers) DeleteUserTextData(c *gin.Context) {
@@ -281,12 +283,14 @@ func (ah *UserDataHandlers) InsertUserFileData(c *gin.Context) {
 	}
 	dir := fmt.Sprintf("../user_files/%s", userID.String())
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 		return
 	}
+	ext := filepath.Ext(file.Filename)
+	name := file.Filename[:len(file.Filename)-len(filepath.Ext(file.Filename))]
+	clearName := name
+	pathToFile := fmt.Sprintf("%s/%s%s", dir, name, ext)
 
-	filename := file.Filename
-	pathToFile := fmt.Sprintf("%s/%s", dir, filename)
 	count := 0
 	for {
 		_, err := os.Stat(pathToFile)
@@ -294,24 +298,24 @@ func (ah *UserDataHandlers) InsertUserFileData(c *gin.Context) {
 			if os.IsNotExist(err) {
 				break
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 				return
 			}
 		}
 		count++
-		filename = fmt.Sprintf("%s(%d)", file.Filename, count)
-		pathToFile = fmt.Sprintf("%s/%s", dir, filename)
+		name = fmt.Sprintf("%s(%d)", clearName, count)
+		pathToFile = fmt.Sprintf("%s/%s%s", dir, name, ext)
 	}
-
 	if err := c.SaveUploadedFile(file, pathToFile); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 		return
 	}
 	userFileData, err := ah.userDataService.InsertUserFileData(
 		c.Request.Context(),
 		userID,
-		file.Filename,
+		name,
 		pathToFile,
+		ext,
 	)
 	if err != nil {
 		msg, statusCode := httperror.GetMessageAndStatusCode(err)
@@ -337,6 +341,22 @@ func (ah *UserDataHandlers) GetUserFileData(c *gin.Context) {
 	c.JSON(http.StatusOK, userFileData)
 }
 
+func (ah *UserDataHandlers) GetUserFileDataList(c *gin.Context) {
+	var offset int64
+	offsetString := c.Query("offset")
+	if offsetString != "" {
+		offset, _ = strconv.ParseInt(offsetString, 10, 64)
+	}
+	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
+	userFileDataList, err := ah.userDataService.GetUserFileDataList(c.Request.Context(), userID, int(offset))
+	if err != nil {
+		msg, statusCode := httperror.GetMessageAndStatusCode(err)
+		c.JSON(statusCode, gin.H{"detail": msg})
+		return
+	}
+	c.JSON(http.StatusOK, userFileDataList)
+}
+
 func (ah *UserDataHandlers) DownloadUserFile(c *gin.Context) {
 	dataID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -350,7 +370,7 @@ func (ah *UserDataHandlers) DownloadUserFile(c *gin.Context) {
 		c.JSON(statusCode, gin.H{"detail": msg})
 		return
 	}
-	c.FileAttachment(userFileData.PathToFile, userFileData.Name)
+	c.FileAttachment(userFileData.PathToFile, userFileData.Name+userFileData.Ext)
 }
 
 func (ah *UserDataHandlers) DeleteUserFileData(c *gin.Context) {
@@ -407,12 +427,12 @@ func (ah *UserDataHandlers) UpdateUserFileData(c *gin.Context) {
 func (ah *UserDataHandlers) InsertUserBankCard(c *gin.Context) {
 	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
 	var requestData struct {
-		Name       *string `json:"name"`
-		Number     *string `json:"number"`
-		CardHolder *string `json:"card_holder"`
-		ExpireDate *string `json:"expire_date"`
-		CSC        *string `json:"csc"`
-		Metadata   map[string]interface{}
+		Name       *string                `json:"name"`
+		Number     *string                `json:"number"`
+		CardHolder *string                `json:"card_holder"`
+		ExpireDate *string                `json:"expire_date"`
+		CSC        *string                `json:"csc"`
+		Metadata   map[string]interface{} `json:"metadata"`
 	}
 	if err := c.BindJSON(&requestData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
@@ -454,6 +474,22 @@ func (ah *UserDataHandlers) GetUserBankCard(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, userBankCard)
+}
+
+func (ah *UserDataHandlers) GetUserBankCardList(c *gin.Context) {
+	var offset int64
+	offsetString := c.Query("offset")
+	if offsetString != "" {
+		offset, _ = strconv.ParseInt(offsetString, 10, 64)
+	}
+	userID := c.MustGet(gin.AuthUserKey).(uuid.UUID)
+	userBankCardList, err := ah.userDataService.GetUserBankCardList(c.Request.Context(), userID, int(offset))
+	if err != nil {
+		msg, statusCode := httperror.GetMessageAndStatusCode(err)
+		c.JSON(statusCode, gin.H{"detail": msg})
+		return
+	}
+	c.JSON(http.StatusOK, userBankCardList)
 }
 
 func (ah *UserDataHandlers) DeleteUserBankCard(c *gin.Context) {

@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (storage *AuthStorage) GetSessionsList(ctx context.Context, userID uuid.UUID) ([]*models.Session, error) {
@@ -40,7 +38,7 @@ func (storage *AuthStorage) GetSession(ctx context.Context, sessionID uuid.UUID)
 	session := models.Session{ID: sessionID}
 	err := row.Scan(&session.Token, &session.UserID, &session.IP, &session.Location, &session.ClientInfo, &session.LastLogin)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "Session not found", http.StatusNotFound)
 		}
 		return nil, err

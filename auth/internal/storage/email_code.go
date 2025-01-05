@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (storage *AuthStorage) GetEmailCodeByID(ctx context.Context, emailCodeID uuid.UUID) (*models.EmailCode, error) {
@@ -25,7 +23,7 @@ func (storage *AuthStorage) GetEmailCodeByID(ctx context.Context, emailCodeID uu
 		&emailCode.NumberOfAttempts,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "EmailCode not found", http.StatusNotFound)
 		}
 		println(err.Error())

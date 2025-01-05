@@ -34,7 +34,7 @@ func (m *MockIUserDataService) InsertUserTextData(ctx context.Context, userID uu
 	return args.Get(0).(*models.UserTextData), args.Error(1)
 }
 
-func (m *MockIUserDataService) InsertUserFileData(ctx context.Context, userID uuid.UUID, name string, pathToFile string) (*models.UserFileData, error) {
+func (m *MockIUserDataService) InsertUserFileData(ctx context.Context, userID uuid.UUID, name string, pathToFile string, ext string) (*models.UserFileData, error) {
 	args := m.Called(ctx, userID, name, pathToFile)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -120,6 +120,38 @@ func (m *MockIUserDataService) GetUserBankCard(ctx context.Context, dataID uuid.
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.UserBankCard), args.Error(1)
+}
+
+func (m *MockIUserDataService) GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error) {
+	args := m.Called(ctx, userID, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.UserTextData), args.Error(1)
+}
+
+func (m *MockIUserDataService) GetUserFileDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserFileData, error) {
+	args := m.Called(ctx, userID, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.UserFileData), args.Error(1)
+}
+
+func (m *MockIUserDataService) GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error) {
+	args := m.Called(ctx, userID, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.UserAuthInfo), args.Error(1)
+}
+
+func (m *MockIUserDataService) GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error) {
+	args := m.Called(ctx, userID, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.UserBankCard), args.Error(1)
 }
 
 func (m *MockIUserDataService) DeleteUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error {

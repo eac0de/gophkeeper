@@ -2,13 +2,11 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx"
 )
 
 func (s *GophKeeperStorage) InsertUserBankCard(ctx context.Context, userBankCardData *models.UserBankCard) error {
@@ -29,7 +27,7 @@ func (s *GophKeeperStorage) InsertUserBankCard(ctx context.Context, userBankCard
 }
 
 func (s *GophKeeperStorage) UpdateUserBankCard(ctx context.Context, userBankCardData *models.UserBankCard) error {
-	query := `UPDATE user_bank_card SET name=$3, updated_at=$4, number=$5, card_holder=$6, expire_date=$7, csc=$8, metadata=$8 WHERE id=$1 AND user_id=$2`
+	query := `UPDATE user_bank_card SET name=$3, updated_at=$4, number=$5, card_holder=$6, expire_date=$7, csc=$8, metadata=$9 WHERE id=$1 AND user_id=$2`
 	_, err := s.Exec(ctx, query,
 		userBankCardData.ID,
 		userBankCardData.UserID,
@@ -41,7 +39,13 @@ func (s *GophKeeperStorage) UpdateUserBankCard(ctx context.Context, userBankCard
 		userBankCardData.CSC,
 		userBankCardData.Metadata,
 	)
-	return err
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return httperror.New(err, "UserBankCard not found", http.StatusNotFound)
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *GophKeeperStorage) DeleteUserBankCard(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) error {
@@ -65,7 +69,7 @@ func (s *GophKeeperStorage) GetUserBankCard(ctx context.Context, dataID uuid.UUI
 		&userBankCard.Metadata,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "UserBankCard not found", http.StatusNotFound)
 		}
 		return nil, err
@@ -74,7 +78,7 @@ func (s *GophKeeperStorage) GetUserBankCard(ctx context.Context, dataID uuid.UUI
 }
 
 func (s *GophKeeperStorage) GetUserBankCardList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserBankCard, error) {
-	query := `SELECT id, name, created_at, updated_at, number, card_holder, expire_date, csc, metadata FROM user_bank_card WHERE user_id=$1 LIMIT 20 OFFSET $2`
+	query := `SELECT id, name, created_at, updated_at, number, card_holder, expire_date, csc, metadata FROM user_bank_card WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20 OFFSET $2`
 
 	rows, err := s.Query(ctx, query, userID, offset)
 	if err != nil {

@@ -2,14 +2,12 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/eac0de/gophkeeper/auth/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func (storage *AuthStorage) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
@@ -23,7 +21,7 @@ func (storage *AuthStorage) GetUserByEmail(ctx context.Context, email string) (*
 		&user.IsSuper,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "User not found", http.StatusNotFound)
 		}
 		return nil, err
@@ -42,7 +40,7 @@ func (storage *AuthStorage) GetUserByID(ctx context.Context, userID uuid.UUID) (
 		&user.IsSuper,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "User not found", http.StatusNotFound)
 		}
 		return nil, err

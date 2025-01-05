@@ -2,13 +2,11 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx"
 )
 
 func (s *GophKeeperStorage) InsertUserAuthInfo(ctx context.Context, userAuthInfo *models.UserAuthInfo) error {
@@ -41,10 +39,16 @@ func (s *GophKeeperStorage) UpdateUserAuthInfo(ctx context.Context, userAuthInfo
 		userAuthInfo.Password,
 		userAuthInfo.Metadata,
 	)
-	return err
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return httperror.New(err, "UserAuthInfo not found", http.StatusNotFound)
+		}
+		return err
+	}
+	return nil
 }
 
-func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, userID uuid.UUID, dataID uuid.UUID) (*models.UserAuthInfo, error) {
+func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserAuthInfo, error) {
 	query := `SELECT name, created_at, updated_at, login, password, metadata FROM user_auth_info WHERE id=$1 AND user_id=$2`
 	userAuthInfo := models.UserAuthInfo{BaseUserData: models.BaseUserData{ID: dataID, UserID: userID}}
 	row := s.QueryRow(ctx, query, dataID, userID)
@@ -57,7 +61,7 @@ func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, userID uuid.UUI
 		&userAuthInfo.Metadata,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "UserAuthInfo not found", http.StatusNotFound)
 		}
 		return nil, err
@@ -66,7 +70,7 @@ func (s *GophKeeperStorage) GetUserAuthInfo(ctx context.Context, userID uuid.UUI
 }
 
 func (s *GophKeeperStorage) GetUserAuthInfoList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserAuthInfo, error) {
-	query := `SELECT id, name, created_at, updated_at, login, password, metadata FROM user_auth_info WHERE user_id=$1 LIMIT 20 OFFSET $2`
+	query := `SELECT id, name, created_at, updated_at, login, password, metadata FROM user_auth_info WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20 OFFSET $2`
 
 	rows, err := s.Query(ctx, query, userID, offset)
 	if err != nil {

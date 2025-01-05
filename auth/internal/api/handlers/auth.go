@@ -53,7 +53,7 @@ func (ah *AuthHandlers) NewVerifyEmailCodeHandler(rt_path string) gin.HandlerFun
 			Code        *uint16    `json:"code"`
 		}
 		if err := c.BindJSON(&requestData); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 			return
 		}
 		if requestData.EmailCodeID == nil || requestData.Code == nil {

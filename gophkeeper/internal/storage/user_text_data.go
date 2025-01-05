@@ -2,13 +2,11 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/eac0de/gophkeeper/internal/models"
 	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx"
 )
 
 func (s *GophKeeperStorage) InsertUserTextData(ctx context.Context, userTextData *models.UserTextData) error {
@@ -20,7 +18,13 @@ func (s *GophKeeperStorage) InsertUserTextData(ctx context.Context, userTextData
 func (s *GophKeeperStorage) UpdateUserTextData(ctx context.Context, userTextData *models.UserTextData) error {
 	query := `UPDATE user_text_data SET name=$3, updated_at=$4, data=$5, metadata=$6 WHERE id=$1 AND user_id=$2`
 	_, err := s.Exec(ctx, query, userTextData.ID, userTextData.UserID, userTextData.Name, userTextData.UpdatedAt, userTextData.Data, userTextData.Metadata)
-	return err
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return httperror.New(err, "UserTextData not found", http.StatusNotFound)
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *GophKeeperStorage) GetUserTextData(ctx context.Context, dataID uuid.UUID, userID uuid.UUID) (*models.UserTextData, error) {
@@ -35,7 +39,7 @@ func (s *GophKeeperStorage) GetUserTextData(ctx context.Context, dataID uuid.UUI
 		&userTextData.Metadata,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if err.Error() == "no rows in result set" {
 			return nil, httperror.New(err, "UserTextData not found", http.StatusNotFound)
 		}
 		return nil, err
@@ -50,7 +54,7 @@ func (s *GophKeeperStorage) DeleteUserTextData(ctx context.Context, dataID uuid.
 }
 
 func (s *GophKeeperStorage) GetUserTextDataList(ctx context.Context, userID uuid.UUID, offset int) ([]models.UserTextData, error) {
-	query := `SELECT id, name, created_at, updated_at, data, metadata FROM user_text_data WHERE user_id=$1 LIMIT 20 OFFSET $2`
+	query := `SELECT id, name, created_at, updated_at, data, metadata FROM user_text_data WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20 OFFSET $2`
 
 	rows, err := s.Query(ctx, query, userID, offset)
 	if err != nil {

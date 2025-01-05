@@ -1,17 +1,13 @@
-package models
+package login
 
 // A simple program that opens the alternate screen buffer then counts down
 // from 5 and then exits.
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/mail"
-	"os"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -21,7 +17,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eac0de/gophkeeper/client/internal/client"
 	"github.com/eac0de/gophkeeper/client/internal/components"
-	"github.com/eac0de/gophkeeper/client/internal/schemes"
 )
 
 var (
@@ -36,13 +31,14 @@ type loginModel struct {
 	input        textinput.Model
 	errMsg       string
 	client       *client.APIClient
+	nextModel    tea.Model
 }
 
-func InitialLoginModel(apiClient *client.APIClient) loginModel {
+func New(apiClient *client.APIClient, nextModel tea.Model, errMsg string) loginModel {
 	// Здесь будет проверка на существование файла в tmp, в файле будет храниться информация о состоянии программы
 	t := textinput.New()
 	t.Focus()
-	return loginModel{input: t, client: apiClient}
+	return loginModel{input: t, client: apiClient, nextModel: nextModel, errMsg: errMsg}
 }
 
 func (m loginModel) Init() tea.Cmd {
@@ -102,8 +98,12 @@ func (m loginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 				}
-				homeModel := InitialInputModel(m.client)
-				return homeModel, nil
+				if m.nextModel != nil {
+					msg := m.nextModel.Init()()
+					m.nextModel, _ = m.nextModel.Update(msg)
+					return m.nextModel, nil
+				}
+				return m, nil
 			}
 			return m, nil
 		case "esc":
@@ -154,33 +154,4 @@ func validateEmail(email string) bool {
 	domain := parts[1]
 	_, err = net.LookupMX(domain)
 	return err == nil
-}
-
-func SaveTokens(tokens schemes.Tokens) {
-	file, err := os.OpenFile(os.TempDir()+"/gophkeeper_auth.json", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	err = json.NewEncoder(file).Encode(schemes.Tokens{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken})
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func LoadTokens() schemes.Tokens {
-	file, err := os.Open(os.TempDir() + "/gophkeeper_auth.json")
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return schemes.Tokens{}
-		}
-		log.Fatal(err)
-	}
-	defer file.Close()
-	var tokens schemes.Tokens
-	err = json.NewDecoder(file).Decode(&tokens)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return tokens
 }

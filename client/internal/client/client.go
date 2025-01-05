@@ -83,90 +83,6 @@ func (c *APIClient) VerifyEmailCode(emailCodeId string, code int) (int, error) {
 	return statusCode, nil
 }
 
-func (c *APIClient) GetTextDataList(offset string) (int, []schemes.DataRow, error) {
-	token, err := c.getAccessToken()
-	if err != nil {
-		return http.StatusUnauthorized, nil, err
-	}
-	var responseBody []schemes.DataRow
-	req := c.client.R().SetAuthToken(token).SetQueryParam("limit", "20").SetBody(responseBody)
-	if offset != "" {
-		req.SetQueryParam("offset", offset)
-	}
-	resp, err := req.Get(fmt.Sprintf("http://%s/api/text_data/", c.gophKeeperServerAddress))
-	if err != nil {
-		return 0, nil, err
-	}
-	statusCode := resp.StatusCode()
-	if statusCode == http.StatusOK {
-		return statusCode, responseBody, nil
-	}
-	return statusCode, nil, getResponseError(resp)
-}
-
-func (c *APIClient) GetFileDataList(offset string) (int, []schemes.DataRow, error) {
-	token, err := c.getAccessToken()
-	if err != nil {
-		return http.StatusUnauthorized, nil, err
-	}
-	var responseBody []schemes.DataRow
-	req := c.client.R().SetAuthToken(token).SetQueryParam("limit", "20").SetBody(responseBody)
-	if offset != "" {
-		req.SetQueryParam("offset", offset)
-	}
-	resp, err := req.Get(fmt.Sprintf("http://%s/api/file_data/", c.gophKeeperServerAddress))
-	if err != nil {
-		return 0, nil, err
-	}
-	statusCode := resp.StatusCode()
-	if statusCode == http.StatusOK {
-		return statusCode, responseBody, nil
-	}
-	return statusCode, nil, getResponseError(resp)
-}
-
-func (c *APIClient) GetAuthInfoList(offset string) (int, []schemes.DataRow, error) {
-	token, err := c.getAccessToken()
-	if err != nil {
-		return http.StatusUnauthorized, nil, err
-	}
-	var responseBody []schemes.DataRow
-	req := c.client.R().SetAuthToken(token).SetQueryParam("limit", "20").SetBody(responseBody)
-	if offset != "" {
-		req.SetQueryParam("offset", offset)
-	}
-	resp, err := req.Get(fmt.Sprintf("http://%s/api/auth_info/", c.gophKeeperServerAddress))
-	if err != nil {
-		return 0, nil, err
-	}
-	statusCode := resp.StatusCode()
-	if statusCode == http.StatusOK {
-		return statusCode, responseBody, nil
-	}
-	return statusCode, nil, getResponseError(resp)
-}
-
-func (c *APIClient) GetBankCardList(offset string) (int, []schemes.DataRow, error) {
-	token, err := c.getAccessToken()
-	if err != nil {
-		return http.StatusUnauthorized, nil, err
-	}
-	var responseBody []schemes.DataRow
-	req := c.client.R().SetAuthToken(token).SetQueryParam("limit", "20").SetBody(responseBody)
-	if offset != "" {
-		req.SetQueryParam("offset", offset)
-	}
-	resp, err := req.Get(fmt.Sprintf("http://%s/api/bank_cards/", c.gophKeeperServerAddress))
-	if err != nil {
-		return 0, nil, err
-	}
-	statusCode := resp.StatusCode()
-	if statusCode == http.StatusOK {
-		return statusCode, responseBody, nil
-	}
-	return statusCode, nil, getResponseError(resp)
-}
-
 func (c *APIClient) getAccessToken() (string, error) {
 	if c.Tokens.AccessToken != "" {
 		token, _, err := new(jwt.Parser).ParseUnverified(c.Tokens.AccessToken, jwt.MapClaims{})
@@ -176,7 +92,7 @@ func (c *APIClient) getAccessToken() (string, error) {
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			// Получаем exp (если существует)
 			if exp, ok := claims["exp"].(float64); ok {
-				if time.Now().Unix() > int64(exp) {
+				if time.Now().Unix() < int64(exp) {
 					return c.Tokens.AccessToken, nil
 				} else {
 					err = c.refreshTokens()
@@ -192,7 +108,11 @@ func (c *APIClient) getAccessToken() (string, error) {
 			return "", errors.New("access token isn't valid")
 		}
 	}
-	return "", errors.New("tokens not found")
+	err := c.refreshTokens()
+	if err != nil {
+		return "", err
+	}
+	return c.Tokens.AccessToken, nil
 }
 
 func (c *APIClient) refreshTokens() error {
@@ -230,5 +150,8 @@ func (c *APIClient) refreshTokens() error {
 }
 
 func getResponseError(resp *resty.Response) error {
-	return errors.New("Response error: " + resp.String() + " Status: " + resp.Status())
+	if resp == nil {
+		return errors.New("response error: nil")
+	}
+	return errors.New("response error: " + resp.String() + " status: " + resp.Status())
 }
