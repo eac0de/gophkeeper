@@ -1,6 +1,8 @@
 package item
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eac0de/gophkeeper/client/internal/client"
+	"github.com/eac0de/gophkeeper/client/internal/components"
 	"github.com/eac0de/gophkeeper/client/internal/models/login"
 	"github.com/eac0de/gophkeeper/client/internal/schemes"
 	"github.com/eac0de/gophkeeper/client/internal/utils"
@@ -33,8 +36,9 @@ var (
 	activeTabStyle   = inactiveTabStyle.Border(activeTabBorder, true)
 	errStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(0, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder()).UnsetBorderTop()
-	focusedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	focusedStyle     = lipgloss.NewStyle().Foreground(highlightColor)
 	blurredStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	successStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Align(lipgloss.Center)
 	cursorStyle      = focusedStyle
 	noStyle          = lipgloss.NewStyle()
 	helpStyle        = blurredStyle
@@ -59,27 +63,38 @@ type itemModel struct {
 	help             string
 	itemIndex        int
 	fileIsDownloaded bool
+	addInfo          string
+	successMsg       string
 }
 
 func New(client *client.APIClient, item interface{}, activeTab int, nextModel tea.Model, itemIndex int) tea.Model {
 	m := itemModel{
 		client:        client,
-		Tabs:          []string{"      Texts      ", "      Files      ", "      BankCards      ", "      AuthInfos      "},
+		Tabs:          components.Tabs,
 		invalidInputs: make([]bool, 5),
 		nextModel:     nextModel,
 		itemIndex:     itemIndex,
 		item:          item,
 		activeTab:     activeTab,
+		addInfo:       "\n",
 	}
 
 	return m.initInputs()
 }
 
-type clearIsFileDownloadedMsg struct{}
+type clearSuccessMsg struct{}
 
-func clearIsFileDownloadedAfter(t time.Duration) tea.Cmd {
+func clearSuccessMsgAfter(t time.Duration) tea.Cmd {
 	return tea.Tick(t, func(_ time.Time) tea.Msg {
-		return clearIsFileDownloadedMsg{}
+		return clearSuccessMsg{}
+	})
+}
+
+type clearInvalidInputsMsg struct{}
+
+func clearInvalidInputsMsgAfter(t time.Duration) tea.Cmd {
+	return tea.Tick(t, func(_ time.Time) tea.Msg {
+		return clearInvalidInputsMsg{}
 	})
 }
 
@@ -94,6 +109,7 @@ func (m itemModel) initInputs() tea.Model {
 				return m.nextModel
 			}
 			m.itemID = textData.ID
+			m.addInfo = fmt.Sprintf("\n\nCreated:\n %s\n\nUpdated:\n %s\n", textData.CreatedAt.Format("15:04:05 02.01.2006"), textData.UpdatedAt.Format("15:04:05 02.01.2006"))
 		}
 		m.inputs = make([]textinput.Model, 2)
 		var t textinput.Model
@@ -115,34 +131,36 @@ func (m itemModel) initInputs() tea.Model {
 			}
 			m.inputs[i] = t
 		}
-		m.help = "↑ up • ↓ down • ctrl+s save • ctrl+d delete • ctrl+c exit"
+		m.help = "↑/↓ up/down • ctrl+s save • ctrl+d delete • ctrl+c exit"
 	case 1:
 		var fileData schemes.UserFileData
-		if m.item != nil {
-			var ok bool
-			fileData, ok = m.item.(schemes.UserFileData)
-			if !ok {
-				return m.nextModel
-			}
-			m.itemID = fileData.ID
-			m.inputs = make([]textinput.Model, 1)
-			var t textinput.Model
-			for i := range m.inputs {
-				t = textinput.New()
-				t.Cursor.Style = cursorStyle
-				t.CharLimit = 100
-				switch i {
-				case 0:
-					t.SetValue(fileData.Name)
-					t.Focus()
-					t.PromptStyle = focusedStyle
-					t.TextStyle = focusedStyle
-					t.Prompt = "Name:\n"
-				}
-				m.inputs[i] = t
-			}
-			m.help = "↑ up • ↓ down • ctrl+s save • ctrl+d delete • tab download_file • ctrl+c exit"
+		if m.item == nil {
+			return m.nextModel
 		}
+		var ok bool
+		fileData, ok = m.item.(schemes.UserFileData)
+		if !ok {
+			return m.nextModel
+		}
+		m.itemID = fileData.ID
+		m.inputs = make([]textinput.Model, 1)
+		var t textinput.Model
+		for i := range m.inputs {
+			t = textinput.New()
+			t.Cursor.Style = cursorStyle
+			t.CharLimit = 100
+			switch i {
+			case 0:
+				t.SetValue(fileData.Name)
+				t.Focus()
+				t.PromptStyle = focusedStyle
+				t.TextStyle = focusedStyle
+				t.Prompt = "Name:\n"
+			}
+			m.inputs[i] = t
+		}
+		m.help = "esc back • ↑/↓ up/down • ctrl+s save • ctrl+d delete • tab download • ctrl+c exit"
+		m.addInfo = fmt.Sprintf("\n\nExtension:\n %s\n\nCreated:\n %s\n\nUpdated:\n %s\n", fileData.Ext, fileData.CreatedAt.Format("15:04:05 02.01.2006"), fileData.UpdatedAt.Format("15:04:05 02.01.2006"))
 
 	case 2:
 		var bankCard schemes.UserBankCard
@@ -153,6 +171,7 @@ func (m itemModel) initInputs() tea.Model {
 				return m.nextModel
 			}
 			m.itemID = bankCard.ID
+			m.addInfo = fmt.Sprintf("\n\nCreated:\n %s\n\nUpdated:\n %s\n", bankCard.CreatedAt.Format("15:04:05 02.01.2006"), bankCard.UpdatedAt.Format("15:04:05 02.01.2006"))
 		}
 		m.inputs = make([]textinput.Model, 5)
 		var t textinput.Model
@@ -182,7 +201,7 @@ func (m itemModel) initInputs() tea.Model {
 			}
 			m.inputs[i] = t
 		}
-		m.help = "↑ up • ↓ down • ctrl+s save • ctrl+d delete • ctrl+c exit"
+		m.help = "esc back • ↑/↓ up/down • ctrl+s save • ctrl+d delete • ctrl+c exit"
 	case 3:
 		var authInfo schemes.UserAuthInfo
 		if m.item != nil {
@@ -192,6 +211,7 @@ func (m itemModel) initInputs() tea.Model {
 				return m.nextModel
 			}
 			m.itemID = authInfo.ID
+			m.addInfo = fmt.Sprintf("\n\nCreated:\n %s\n\nUpdated:\n %s\n", authInfo.CreatedAt.Format("15:04:05 02.01.2006"), authInfo.UpdatedAt.Format("15:04:05 02.01.2006"))
 		}
 		m.inputs = make([]textinput.Model, 3)
 		var t textinput.Model
@@ -215,7 +235,7 @@ func (m itemModel) initInputs() tea.Model {
 			}
 			m.inputs[i] = t
 		}
-		m.help = "↑ up • ↓ down • ctrl+s save • ctrl+d delete • ctrl+c exit"
+		m.help = "esc back • ↑/↓ up/down • ctrl+s save • ctrl+d delete • ctrl+c exit"
 	}
 	return m
 }
@@ -226,9 +246,28 @@ func (m itemModel) Init() tea.Cmd {
 
 func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case clearIsFileDownloadedMsg:
-		m.fileIsDownloaded = false
+	case clearSuccessMsg:
+		m.successMsg = ""
 		return m, nil
+	case clearInvalidInputsMsg:
+		for i := range m.invalidInputs {
+			m.invalidInputs[i] = false
+		}
+		cmds := make([]tea.Cmd, len(m.inputs))
+		for i := range m.inputs {
+			if i == m.focusIndex {
+				// Set focused state
+				cmds[i] = m.inputs[i].Focus()
+				m.inputs[i].PromptStyle = focusedStyle
+				m.inputs[i].TextStyle = focusedStyle
+				continue
+			}
+			// Remove focused state
+			m.inputs[i].Blur()
+			m.inputs[i].PromptStyle = noStyle
+			m.inputs[i].TextStyle = noStyle
+		}
+		return m, tea.Batch(cmds...)
 	case schemes.DownloadFileMsg:
 		if msg.Err != nil {
 			if msg.StatusCode == http.StatusUnauthorized {
@@ -238,7 +277,8 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.fileIsDownloaded = true
-		return m, clearIsFileDownloadedAfter(3 * time.Second)
+		m.successMsg = "File downloaded successfully"
+		return m, clearSuccessMsgAfter(3 * time.Second)
 	case schemes.SaveTextDataMsg:
 		if msg.Err != nil {
 			if msg.StatusCode == http.StatusUnauthorized {
@@ -248,7 +288,8 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.item = msg.TextData
-		return m.initInputs(), nil
+		m.successMsg = "Text data saved successfully"
+		return m.initInputs(), clearSuccessMsgAfter(3 * time.Second)
 	case schemes.SaveFileDataMsg:
 		if msg.Err != nil {
 			if msg.StatusCode == http.StatusUnauthorized {
@@ -258,7 +299,8 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.item = msg.FileData
-		return m.initInputs(), nil
+		m.successMsg = "Filename saved successfully"
+		return m.initInputs(), clearSuccessMsgAfter(3 * time.Second)
 	case schemes.SaveBankCardMsg:
 		if msg.Err != nil {
 			if msg.StatusCode == http.StatusUnauthorized {
@@ -268,7 +310,8 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.item = msg.BankCard
-		return m.initInputs(), nil
+		m.successMsg = "Bank card saved successfully"
+		return m.initInputs(), clearSuccessMsgAfter(3 * time.Second)
 	case schemes.SaveAuthInfoMsg:
 		if msg.Err != nil {
 			if msg.StatusCode == http.StatusUnauthorized {
@@ -278,12 +321,9 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.item = msg.AuthInfo
-		return m.initInputs(), nil
+		m.successMsg = "Auth info saved successfully"
+		return m.initInputs(), clearSuccessMsgAfter(3 * time.Second)
 	case tea.KeyMsg:
-		m.errMsg = ""
-		for i := range m.invalidInputs {
-			m.invalidInputs[i] = false
-		}
 		switch msg.String() {
 		case "esc":
 			return m.nextModel, func() tea.Msg {
@@ -314,7 +354,7 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if hasErr {
-					return m, nil
+					return m, clearInvalidInputsMsgAfter(1 * time.Second)
 				}
 				return m, func() tea.Msg {
 					return m.client.SaveUserTextData(m.itemID, m.inputs[0].Value(), m.inputs[1].Value(), nil)
@@ -333,7 +373,7 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if hasErr {
-					return m, nil
+					return m, clearInvalidInputsMsgAfter(1 * time.Second)
 				}
 				return m, func() tea.Msg {
 					return m.client.SaveUserFileData(m.itemID, m.inputs[0].Value(), "", nil)
@@ -376,7 +416,7 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if hasErr {
-					return m, nil
+					return m, clearInvalidInputsMsgAfter(1 * time.Second)
 				}
 				return m, func() tea.Msg {
 					return m.client.SaveUserBankCard(m.itemID, m.inputs[0].Value(), m.inputs[1].Value(), m.inputs[2].Value(), m.inputs[3].Value(), m.inputs[4].Value(), nil)
@@ -407,7 +447,7 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if hasErr {
-					return m, nil
+					return m, clearInvalidInputsMsgAfter(1 * time.Second)
 				}
 				return m, func() tea.Msg {
 					return m.client.SaveUserAuthInfo(m.itemID, m.inputs[0].Value(), m.inputs[1].Value(), m.inputs[2].Value(), nil)
@@ -430,10 +470,10 @@ func (m itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.focusIndex++
 			}
-			if m.focusIndex > len(m.inputs) {
+			if m.focusIndex > len(m.inputs)-1 {
 				m.focusIndex = 0
 			} else if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs)
+				m.focusIndex = len(m.inputs) - 1
 			}
 			cmds := make([]tea.Cmd, len(m.inputs))
 			for i := range m.inputs {
@@ -474,21 +514,24 @@ func (m *itemModel) updateInputs(msg tea.Msg) tea.Cmd {
 
 func (m itemModel) View() string {
 	for i := range m.inputs {
+		log.Println(m.invalidInputs)
 		if m.invalidInputs[i] {
 			m.inputs[i].PromptStyle = errStyle
 			m.inputs[i].TextStyle = errStyle
 		}
 	}
 	inputsBuilder := strings.Builder{}
-	if m.fileIsDownloaded {
-		inputsBuilder.WriteString("File is downloaded")
-	}
+
 	for i := range m.inputs {
 		inputsBuilder.WriteRune('\n')
 		inputsBuilder.WriteString(m.inputs[i].View())
 		if i < len(m.inputs)-1 {
 			inputsBuilder.WriteRune('\n')
 		}
+	}
+	inputsBuilder.WriteString(m.addInfo)
+	if m.successMsg != "" {
+		inputsBuilder.WriteString(successStyle.Render("\n" + m.successMsg + "\n"))
 	}
 	sb := strings.Builder{}
 	renderedTabs := m.renderTabs()

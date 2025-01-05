@@ -29,10 +29,10 @@ type Config struct {
 	JWTRefreshExp time.Duration `env:"JWT_REFRESH_EXP" envDefault:"168h"`
 
 	// EMAIL_SENDER
-	SMTPHost     string `env:"SMTP_HOST" envDefault:"smtp.yandex.ru"`
-	SMTPPort     string `env:"SMTP_PORT" envDefault:"587"`
-	SMTPUsername string `env:"SMTP_USERNAME" envDefault:"egor2001zhukov@yandex.ru"`
-	SMTPPassword string `env:"SMTP_PASSWORD" envDefault:"spotgfkmxtzdtqvc"`
+	SMTPHost     string `env:"SMTP_HOST"`
+	SMTPPort     string `env:"SMTP_PORT"`
+	SMTPUsername string `env:"SMTP_USERNAME"`
+	SMTPPassword string `env:"SMTP_PASSWORD"`
 }
 
 func MustLoad() *Config {

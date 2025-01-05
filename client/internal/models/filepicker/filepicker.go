@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eac0de/gophkeeper/client/internal/client"
+	"github.com/eac0de/gophkeeper/client/internal/components"
 	"github.com/eac0de/gophkeeper/client/internal/models/item"
 	"github.com/eac0de/gophkeeper/client/internal/models/login"
 	"github.com/eac0de/gophkeeper/client/internal/schemes"
@@ -61,20 +62,19 @@ func clearErrorAfter(t time.Duration) tea.Cmd {
 	})
 }
 
-func New(nextModel tea.Model, client *client.APIClient) model {
+func New(nextModel tea.Model, client *client.APIClient, height int) model {
 	fp := fper.New()
 	fp.AllowedTypes = []string{".mod", ".sum", ".go", ".txt", ".md", ".png", ".jpg", ".jpeg"}
-	fp.CurrentDirectory, _ = os.UserHomeDir()
-	fp, cmd := fp.Update(fp.Init()())
-	fp.Update(cmd)
+	fp.Height = height - 12
 	fp.AutoHeight = false
-	fp.Height = 10
+	fp.CurrentDirectory, _ = os.UserHomeDir()
+	fp, _ = fp.Update(fp.Init()())
 	m := model{
 		fp:        fp,
 		client:    client,
 		nextModel: nextModel,
 
-		Tabs:      []string{"      Texts      ", "      Files      ", "      BankCards      ", "      AuthInfos      "},
+		Tabs:      components.Tabs,
 		activeTab: 1,
 	}
 	return m
@@ -146,6 +146,7 @@ func (m model) View() string {
 	}
 	var s strings.Builder
 	s.WriteString("\n  ")
+	addHelp := "enter select"
 	if m.errMsg != "" {
 		s.WriteString(m.fp.Styles.DisabledFile.Render(m.errMsg))
 	} else if m.selectedFile == "" {
@@ -157,7 +158,9 @@ func (m model) View() string {
 
 	} else {
 		s.WriteString("Selected file: " + m.fp.Styles.Selected.Render(m.selectedFile))
+		addHelp = "ctrl+s save"
 	}
+	help := "↑/↓ up/down • ←/→ out/in • " + addHelp + " • ctrl+d delete • ctrl+c exit"
 	if m.invalidFile != "" {
 		s.WriteString("\n" + m.fp.Styles.DisabledFile.Render(m.invalidFile) + " is not a valid file.")
 	}
@@ -168,7 +171,7 @@ func (m model) View() string {
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 	sb.WriteString(row)
 	sb.WriteString("\n")
-	sb.WriteString(windowStyle.Width((lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize())).Render(s.String() + helpStyle.Render("\n\n"+"↑/↓ up/down •  • ctrl+s save • ctrl+d delete • ctrl+c exit")))
+	sb.WriteString(windowStyle.Width((lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize())).Render(s.String() + "\n" + helpStyle.Render(help)))
 
 	if m.errMsg != "" {
 		sb.WriteString("\n\n" + errStyle.Render(m.errMsg))

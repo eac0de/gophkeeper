@@ -99,9 +99,12 @@ func (m loginModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if m.nextModel != nil {
+					var cmd tea.Cmd
 					msg := m.nextModel.Init()()
-					m.nextModel, _ = m.nextModel.Update(msg)
-					return m.nextModel, nil
+					if msg != nil {
+						m.nextModel, cmd = m.nextModel.Update(msg)
+					}
+					return m.nextModel, cmd
 				}
 				return m, nil
 			}

@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/eac0de/gophkeeper/client/internal/client"
+	"github.com/eac0de/gophkeeper/client/internal/components"
 	"github.com/eac0de/gophkeeper/client/internal/models/filepicker"
 	"github.com/eac0de/gophkeeper/client/internal/models/item"
 	"github.com/eac0de/gophkeeper/client/internal/models/login"
@@ -30,13 +31,14 @@ func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 var (
 	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
 	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
-	tabDocStyle       = lipgloss.NewStyle().Padding(0, 0, 0, 0)
-	listDocStyle      = lipgloss.NewStyle().Margin(0, 0)
+	tabDocStyle       = lipgloss.NewStyle()
+	listDocStyle      = lipgloss.NewStyle()
 
 	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
 	inactiveTabStyle = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 0)
 	activeTabStyle   = inactiveTabStyle.Border(activeTabBorder, true)
 	errStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	helpStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(0, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder()).UnsetBorderTop()
 )
 
@@ -53,25 +55,37 @@ func (i listItem) FilterValue() string { return i.title }
 type homeModel struct {
 	Tabs       []string
 	TabContent []list.Model
+	TabHelps   []string
 	activeTab  int
 	client     *client.APIClient
 	errMsg     string
+
+	height int
 }
 
 func New(client *client.APIClient) tea.Model {
 	listModels := []list.Model{}
 	for i := 0; i < 4; i++ {
-		lst := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+		lst := list.New(nil, list.NewDefaultDelegate(), 0, 10)
 		lst.SetShowTitle(false)
 		lst.SetShowPagination(false)
 		lst.SetShowStatusBar(false)
+		lst.SetShowHelp(false)
+		lst.SetFilteringEnabled(false)
 		lst.KeyMap = NewKeyMap()
 		listModels = append(listModels, lst)
 	}
 	return homeModel{
-		Tabs:       []string{"      Texts      ", "      Files      ", "      BankCards      ", "      AuthInfos      "},
+		Tabs: components.Tabs,
+		TabHelps: []string{
+			"↑/↓/→ • enter select • ctrl+n new • ctrl+d delete • ctrl+c exit",
+			"↑/↓/→/← • enter select • ctrl+n new • ctrl+d delete • enter+tab download • ctrl+c exit",
+			"↑/↓/→/← • enter select • ctrl+n new • ctrl+d delete • ctrl+c exit",
+			"↑/↓/← • enter select • ctrl+n new • ctrl+d delete • ctrl+c exit",
+		},
 		TabContent: listModels,
 		client:     client,
+		height:     10,
 	}
 }
 
@@ -193,7 +207,7 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return login.New(m.client, New(m.client), ""), nil
 		case "ctrl+n":
 			if m.activeTab == 1 {
-				return filepicker.New(m, m.client), nil
+				return filepicker.New(m, m.client, m.height), nil
 			}
 			return item.New(m.client, nil, m.activeTab, m, -1), nil
 		case "down":
@@ -248,6 +262,7 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
+		m.height = msg.Height
 		h, v := listDocStyle.GetFrameSize()
 		for i := 0; i < len(m.TabContent); i++ {
 			m.TabContent[i].SetSize(msg.Width-h, msg.Height-v-10)
@@ -351,7 +366,7 @@ func (m homeModel) View() string {
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 	sb.WriteString(row)
 	sb.WriteString("\n")
-	sb.WriteString(windowStyle.Width((lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize())).Render(m.TabContent[m.activeTab].View()))
+	sb.WriteString(windowStyle.Width((lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize())).Render("\n" + m.TabContent[m.activeTab].View() + helpStyle.Render("\n"+m.TabHelps[m.activeTab]+"\nctrl+o logout")))
 	if m.errMsg != "" {
 		sb.WriteString("\n\n" + errStyle.Render(m.errMsg))
 	}

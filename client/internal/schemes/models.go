@@ -45,7 +45,7 @@ type UserTextData struct {
 // Бинарные данные
 type UserFileData struct {
 	BaseUserData
-	PathToFile string `db:"path_to_file" json:"-"`
+	Ext string `db:"ext" json:"ext"`
 }
 
 // Банковская карта
