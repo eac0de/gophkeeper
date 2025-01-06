@@ -60,7 +60,7 @@ func (c *APIClient) DownloadFile(itemID uuid.UUID) tea.Msg {
 		if fileName == "" {
 			fileName = "downloaded_file"
 		}
-		dir := fmt.Sprintf("%s/gophkeeper_files", homeDir)
+		dir := fmt.Sprintf("%s/GophkeeperFiles", homeDir)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return schemes.DownloadFileMsg{
 				Err: err,
