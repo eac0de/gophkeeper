@@ -6,13 +6,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"auth/internal/api/handlers"
-	"auth/internal/api/inmiddlewares"
-	"auth/internal/config"
-	"auth/internal/grpcserver"
-	"auth/internal/services"
-	"auth/internal/storage/psql"
-	"auth/pkg/emailsender"
+	"github.com/eac0de/gophkeeper/auth/internal/api/handlers"
+	"github.com/eac0de/gophkeeper/auth/internal/api/inmiddlewares"
+	"github.com/eac0de/gophkeeper/auth/internal/config"
+	"github.com/eac0de/gophkeeper/auth/internal/grpcserver"
+	"github.com/eac0de/gophkeeper/auth/internal/services"
+	"github.com/eac0de/gophkeeper/auth/internal/storage"
+	"github.com/eac0de/gophkeeper/shared/pkg/emailsender"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +30,7 @@ func setupRouter(
 	)
 
 	rootGroup.POST("code/generate/", authHandlers.GenerateEmailCodeHandler)
-	rootGroup.POST("code/check/", authHandlers.NewCheckEmailCodeHandler("/api/auth/token/"))
+	rootGroup.POST("code/verify/", authHandlers.NewVerifyEmailCodeHandler("/api/auth/token/"))
 	rootGroup.POST("token/", authHandlers.NewRefreshTokenHandler("/api/auth/token/"))
 	rootGroup.DELETE("token/", authHandlers.NewDeleteCurrentSession("/api/auth/token/"))
 
@@ -50,7 +50,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	psqlStorage, err := psql.New(
+	authStorage, err := storage.NewAuthStorage(
 		ctx,
 		cfg.PSQLHost,
 		cfg.PSQLPort,
@@ -61,7 +61,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer psqlStorage.Close()
+	err = authStorage.Migrate(ctx, "./migrations", false)
+	if err != nil {
+		panic(err)
+	}
+	defer authStorage.Close()
 
 	var emailSender emailsender.IEmailSender
 	if cfg.IsDev {
@@ -70,8 +74,8 @@ func main() {
 		emailSender = emailsender.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword)
 	}
 
-	sessionService := services.NewSessionService(cfg.JWTSecretKey, cfg.JWTAccessExp, cfg.JWTRefreshExp, psqlStorage)
-	authService := services.NewAuthService(psqlStorage, emailSender)
+	sessionService := services.NewSessionService(cfg.JWTSecretKey, cfg.JWTAccessExp, cfg.JWTRefreshExp, authStorage)
+	authService := services.NewAuthService(authStorage, emailSender)
 
 	gprcAuthServer := grpcserver.NewAuthGRPCServer(cfg.GPRCServerAddress, sessionService)
 	go gprcAuthServer.Run()

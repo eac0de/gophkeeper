@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"auth/internal/services"
-	"auth/pkg/httperror"
+	"github.com/eac0de/gophkeeper/auth/internal/services"
+	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -46,21 +46,21 @@ func (ah *AuthHandlers) GenerateEmailCodeHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"email_code_id": emailCode.ID})
 }
 
-func (ah *AuthHandlers) NewCheckEmailCodeHandler(rt_path string) gin.HandlerFunc {
+func (ah *AuthHandlers) NewVerifyEmailCodeHandler(rt_path string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var requestData struct {
 			EmailCodeID *uuid.UUID `json:"email_code_id"`
 			Code        *uint16    `json:"code"`
 		}
 		if err := c.BindJSON(&requestData); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 			return
 		}
 		if requestData.EmailCodeID == nil || requestData.Code == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"detail": "email_code_id and code are required"})
 			return
 		}
-		user, isNewUser, err := ah.authService.CheckEmailCode(c.Request.Context(), *requestData.EmailCodeID, *requestData.Code)
+		user, isNewUser, err := ah.authService.VerifyEmailCode(c.Request.Context(), *requestData.EmailCodeID, *requestData.Code)
 		if err != nil {
 			msg, statusCode := httperror.GetMessageAndStatusCode(err)
 			c.JSON(statusCode, gin.H{"detail": msg})

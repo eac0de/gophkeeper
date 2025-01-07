@@ -5,8 +5,8 @@ import (
 	"log"
 	"net"
 
-	"auth/internal/services"
-	pb "auth/proto"
+	"github.com/eac0de/gophkeeper/auth/internal/services"
+	pb "github.com/eac0de/gophkeeper/auth/proto"
 
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip"

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"auth/internal/models"
-	"auth/pkg/httperror"
+	"github.com/eac0de/gophkeeper/auth/internal/models"
+	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"

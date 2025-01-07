@@ -8,9 +8,9 @@ import (
 	"regexp"
 	"time"
 
-	"auth/internal/models"
-	"auth/pkg/emailsender"
-	"auth/pkg/httperror"
+	"github.com/eac0de/gophkeeper/auth/internal/models"
+	"github.com/eac0de/gophkeeper/shared/pkg/emailsender"
+	"github.com/eac0de/gophkeeper/shared/pkg/httperror"
 
 	"github.com/google/uuid"
 )
@@ -72,7 +72,7 @@ func (as *AuthService) GenerateEmailCode(
 	return emailCode, nil
 }
 
-func (as *AuthService) CheckEmailCode(
+func (as *AuthService) VerifyEmailCode(
 	ctx context.Context,
 	emailCodeID uuid.UUID,
 	code uint16,
